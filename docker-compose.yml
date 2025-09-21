@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
   totalcontrole_db:
     image: mysql:5.7
     container_name: totalcontrole_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: totalcontrole
-      MYSQL_USER: totalcontrole
-      MYSQL_PASSWORD: 7G0APN35oSIoam
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3310:3306"
     volumes:
@@ -17,7 +15,7 @@ services:
     networks:
       - totalcontrole-net
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -35,10 +33,10 @@ services:
       totalcontrole_db:
         condition: service_healthy
     environment:
-      DB_HOST: totalcontrole_db
-      DB_DATABASE: totalcontrole
-      DB_USERNAME: totalcontrole
-      DB_PASSWORD: 7G0APN35oSIoam
+      DB_HOST: ${DB_HOST}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
     networks:
       - totalcontrole-net
 
@@ -54,10 +52,10 @@ services:
       totalcontrole_db:
         condition: service_healthy
     environment:
-      DB_HOST: totalcontrole_db
-      DB_DATABASE: totalcontrole
-      DB_USERNAME: totalcontrole
-      DB_PASSWORD: 7G0APN35oSIoam
+      DB_HOST: ${DB_HOST}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
     networks:
       - totalcontrole-net
 
