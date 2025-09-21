@@ -1,0 +1,2 @@
+<label for="">Categoria</label>
+<?=$this->Form->input('Transacao.id_categoria',array('options'=>$categorias,'empty'=>'Selecione...','class'=>'form-control input-valor','placeholder'=>'','label'=>false,'div'=>false,'errorMessage' => false,'required'=>false));?>

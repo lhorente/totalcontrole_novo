@@ -1,0 +1,126 @@
+/*
+	Transição está fazendo dropdown travarem
+*/
+.form-control{-webkit-transition: none;transition: none;}
+
+/*
+	Cores padrões
+*/
+.background-verde{background: #0f0;}
+.background-vermelho{background: #f00;}
+
+/*
+	Saldo e info usuário menu
+*/
+.dropdown-menu.menu-usuario{width:350px!important;}
+.dropdown-menu.menu-usuario a{color:#fff;}
+.btn-change-profile{background: #FFF;color:#3c8dbc;padding: 5px;margin: 3px;border: solid 1px #FFF;}
+.btn-change-profile.active{background: #3c8dbc;color: #fff;}
+
+/*
+	Alterados do AdminLTE
+*/
+.nav-transacoes li.active a{background-color:#fff;}
+.nav-transacoes li {text-align:center;width:119px;}
+
+.link-mes {margin: 0 10px; }
+.col-expand{width:20px;}
+.col-expand .fa{font-size:12px;}
+
+.datepicker{z-index:1151 !important;}
+
+.small-box .inner {padding:5px;}
+.small-box .inner h4{margin-top:5px;margin-botton:5px;}
+.small-box .inner p{margin:0 0 5px;}
+
+.loading-page {margin: 100px 500px;font-size: 60px;}
+
+.has-feedback .form-control{padding-right:15px;}
+.input-status {width: 18px!important;top: 0!important;}
+
+.table-hover>tbody>tr:hover>td, .table-hover>tbody>tr:hover>th{background-color:#CCC;}
+
+.no-border {border:none;}
+
+.table>tbody>tr>td{line-height:2;}
+
+.filtros{width:100%;text-align:center;display:block;border:solid 1px #ccc;margin:10px 0;}
+.filtros .div-filtro{display:inline-block;float:none;}
+.title-filter{display:inline-block;font-size:16px;margin-left:10px;margin-right:10px;}
+
+/*
+	Transações
+*/
+.nav-meses{}
+.nav-meses ul{padding:0;text-align:center;width:100%;}
+.nav-meses ul li{display:inline-block;font-size:18px;margin-left:10px;margin-right:10px;}
+.nav-meses ul li.mes-selecionado{font-size:24px;margin-left:20px;margin-right:20px;}
+.nav-meses ul li .seta-mes{font-size:13px;margin:0 5}
+
+.table-transacoes .block-status{width: 10px;height: 35px;display: block;float: left;}
+.table-transacoes .col-dia{font-weight:bold;}
+.table-transacoes .acoes{display:block;font-size:12px;width:100%;}
+.table-transacoes .acoes a{margin-right:10px;}
+.table-transacoes>tbody>tr>td{line-height:1.5;padding-top: 8px;padding-bottom: 8px;vertical-align:middle;}
+.table-transacoes.table-striped>tbody>tr:nth-child(odd)>td, .table-striped>tbody>tr:nth-child(odd)>th{background:#e6e6e6;}
+.table-transacoes .a-label{margin-left:5px;background-color: #CCC;color:#333;font-size: 12px;padding: 3px;border-radius: .25em;}
+.table-transacoes .a-label span.mobile{display:none;}
+.table-transacoes .btn-salvar-transacao.list {color:#333;}
+.table-transacoes .tr-lucro {color:#428bca;}
+.table-transacoes .tr-lucro .btn-salvar-transacao.list {color:#428bca;}
+/*.table-transacoes>tbody>tr>td:hover .acoes{display:block;}*/
+
+.datepicker-readonly{background-color:#FFF!important;cursor:text!important;}
+
+/******************
+Transações Novo
+******************/
+.lista-transacoes .multiselect .box-transacao .fake-checkbox-wrapper{display:table;}
+.box-transacao-wrapper .checkbox-selecionar-varias{float: left;margin: 29px 10px;}
+.box-transacao{width: 100%;padding: 10px 0;border-bottom: solid 1px #eee;height: 72px;display:block;color:#333;}
+.box-transacao:hover{background:#f1fff8;color:#000;}
+.box-transacao .fake-checkbox-wrapper {background: #ccc;width: 30px;float: left;height: 100%;color:#fff;display:none;}
+.box-transacao .fake-checkbox-wrapper span {display: table-cell;vertical-align: middle;text-align: center;}
+.box-transacao .fake-checkbox-wrapper .checked{display:none;}
+.box-transacao .fake-checkbox-wrapper .nonchecked{display:block;}
+.box-transacao .fake-checkbox-wrapper.active .checked{display:block;}
+.box-transacao .fake-checkbox-wrapper.active .nonchecked{display:none;}
+
+.box-transacao .data {background: #ccc;height: 100%;padding: 15px 10px;vertical-align: top;float: left;color: #fff;}
+.box-transacao .conteudo{height: 100%;vertical-align: top;padding: 10px;margin-left: 10px;line-height: 0.8em;float:left;}
+.box-transacao .descricao{}
+.box-transacao .categoria{font-size: 12px;color: #bcbcbc;}
+.box-transacao .categoria .cartao{}
+.box-transacao .categoria .caixa::before{content: "|";margin: 0 5px;color: #ddd;}
+.box-transacao .categoria .cartao::before{content: '';width: 3px;height: 3px;background: #bcbcbc;display: inline-block;border-radius: 50%;margin: 0 4px 2px 4px;}
+.box-transacao.lucro .categoria{color:#9fb5f7;}
+.box-transacao .preco{display:table;float:right;height: 100%;padding-right:15px;}
+.box-transacao .preco span{display:table-cell;vertical-align:middle;}
+
+.box-transacao.em-dia .data{background: #64c799;}
+.box-transacao.atrasado .data{background: #a91515;}
+.box-transacao.em-dia .fake-checkbox-wrapper{background: #8fccaf;}
+.box-transacao.atrasado .fake-checkbox-wrapper{background: #c54646;}
+.box-transacao.despesa{}
+.box-transacao.lucro{color:#5075e9;}
+/**********************************
+* Transações - Barra de ferramentas
+**********************************/
+.barra-ferramentas{border: solid 1px #eee;padding: 15px;margin: 15px 0;}
+.barra-ferramentas a{margin: 0 15px;}
+.barra-ferramentas a:first-child{margin: 0;}
+
+/**********************************
+* Transações - Ações com selecionados
+**********************************/
+.box-acoes-selecionadas{}
+
+@media screen and (max-width: 767px) {
+	.table-transacoes .a-label span{display:none;}
+	.table-transacoes .a-label span.mobile{display:block;}
+}
+
+@media screen and (max-width: 390px) {
+	.nav-meses ul li{font-size:16px;margin-left:5px;margin-right:5px;}
+	.nav-meses ul li.mes-selecionado{font-size:20px;margin-left:10px;margin-right:10px;}
+}

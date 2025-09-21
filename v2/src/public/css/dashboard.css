@@ -1,0 +1,47 @@
+.info-box-transaction {color:#000;text-decoration: none;transition: transform ease 0.5s, box-shadow ease 0.5s;}
+.info-box-transaction:hover, .info-box-transaction:active, .info-box-transaction:focus {box-shadow: 0 0 2px rgb(0 0 0 / 13%), 0 8px 10px rgb(0 0 0 / 20%);}
+.info-box-transaction .categories span {font-size: 14px;color:#585858;white-space: nowrap;}
+/* .info-box-transaction .categories span + span:before {content: "|"; margin: 0 5px; color: #ddd;} */
+.info-box-transaction .info-box-number span + span:before {content: "|"; margin: 0 5px; color: #ddd;}
+.info-box-transaction .categories span:after {content: "|"; margin: 0 5px; color: #ddd;}
+.info-box-transaction .categories span:last-child:after {content: "";}
+.info-box-transaction .info-box-icon {font-size:16px;width:35px;}
+
+.table-transactions-search tbody tr td {vertical-align: middle;}
+.table-transactions-search tbody tr td span {font-size: 12px;color: #bcbcbc;}
+.table-transactions-search tbody tr td span + span:before {content: "|"; margin: 0 5px; color: #ddd;}
+.table-transactions-search tbody tr td.col-date{width:50px;}
+.table-transactions-search tbody tr td.col-value{width:50px;}
+
+.table-wallets tbody tr.child td:first-child{padding-left:50px!important;}
+
+/* Loading: Início */
+.spinner {
+  width: 40px;
+  height: 40px;
+  background-color: #333;
+
+  margin: 100px auto;
+  -webkit-animation: sk-rotateplane 1.2s infinite ease-in-out;
+  animation: sk-rotateplane 1.2s infinite ease-in-out;
+}
+
+@-webkit-keyframes sk-rotateplane {
+  0% { -webkit-transform: perspective(120px) }
+  50% { -webkit-transform: perspective(120px) rotateY(180deg) }
+  100% { -webkit-transform: perspective(120px) rotateY(180deg)  rotateX(180deg) }
+}
+
+@keyframes sk-rotateplane {
+  0% {
+    transform: perspective(120px) rotateX(0deg) rotateY(0deg);
+    -webkit-transform: perspective(120px) rotateX(0deg) rotateY(0deg)
+  } 50% {
+    transform: perspective(120px) rotateX(-180.1deg) rotateY(0deg);
+    -webkit-transform: perspective(120px) rotateX(-180.1deg) rotateY(0deg)
+  } 100% {
+    transform: perspective(120px) rotateX(-180deg) rotateY(-179.9deg);
+    -webkit-transform: perspective(120px) rotateX(-180deg) rotateY(-179.9deg);
+  }
+}
+/* Loading: FIM */

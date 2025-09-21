@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cakephp2-apache
+    ports:
+      - "8081:80"
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - db
+    environment:
+      - APACHE_RUN_USER=www-data
+      - APACHE_RUN_GROUP=www-data
+    restart: always
+    networks:
+      - cake
+
+  db:
+    image: mysql:5.7
+    container_name: cakephp2-mysql
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: totalcontrole
+      MYSQL_USER: totalcontrole
+      MYSQL_PASSWORD: 7G0APN35oSIoam
+    volumes:
+      - ./db_data:/var/lib/mysql
+    networks:
+      - cake
+
+networks:
+    cake:
+        driver: bridge

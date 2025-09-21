@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  totalcontrole_db:
+    image: mysql:5.7
+    container_name: totalcontrole_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: totalcontrole
+      MYSQL_USER: totalcontrole
+      MYSQL_PASSWORD: 7G0APN35oSIoam
+    ports:
+      - "3310:3306"
+    volumes:
+      - totalcontrole_db_data:/var/lib/mysql
+    networks:
+      - totalcontrole-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  total_controle_v1:
+    build:
+      context: ./v1
+    container_name: total_controle_v1
+    ports:
+      - "8091:80"
+    volumes:
+      - ./v1/src:/var/www/html
+    depends_on:
+      totalcontrole_db:
+        condition: service_healthy
+    environment:
+      DB_HOST: totalcontrole_db
+      DB_DATABASE: totalcontrole
+      DB_USERNAME: totalcontrole
+      DB_PASSWORD: 7G0APN35oSIoam
+    networks:
+      - totalcontrole-net
+
+  total_controle_v2:
+    build:
+      context: ./v2
+    container_name: total_controle_v2
+    ports:
+      - "8092:80"
+    volumes:
+      - ./v2/src:/var/www/html
+    depends_on:
+      totalcontrole_db:
+        condition: service_healthy
+    environment:
+      DB_HOST: totalcontrole_db
+      DB_DATABASE: totalcontrole
+      DB_USERNAME: totalcontrole
+      DB_PASSWORD: 7G0APN35oSIoam
+    networks:
+      - totalcontrole-net
+
+networks:
+  totalcontrole-net:
+    driver: bridge
+
+volumes:
+  totalcontrole_db_data:
