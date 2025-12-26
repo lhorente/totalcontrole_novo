@@ -55,4 +55,6 @@ RUN echo 'LogLevel info' >> /etc/apache2/apache2.conf
 
 # Ajusta permissões finais - IMPORTANTE: fazer isso por último
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 777 /var/www/html
+    && chmod -R 755 /var/www/html \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache

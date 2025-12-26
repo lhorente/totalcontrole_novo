@@ -16,7 +16,7 @@ RUN a2enmod rewrite
 
 # Permissões
 RUN chown -R www-data:www-data /var/www/html && chmod -R 775 /var/www
-RUN chmod -R 777 /var/www/html/app/tmp
+RUN mkdir -p /var/www/html/app/tmp && chmod -R 777 /var/www/html/app/tmp
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
