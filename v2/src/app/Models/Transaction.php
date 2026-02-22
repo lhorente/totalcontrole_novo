@@ -16,6 +16,24 @@ class Transaction extends Model
 
   public $table = 'transacoes';
 
+  protected $fillable = [
+    'id_categoria',
+    'id_cliente',
+    'id_caixa',
+    'id_cartao',
+    'id_cliente',
+    'id_usuario',
+    'descricao',
+    'descricao_banco',
+    'valor',
+    'data',
+    'data_pagamento',
+    'data_recebimento',
+    'tipo',
+    'status',
+    'chave_banco',
+  ];
+
   protected $dates = [
     'created_at',
     'updated_at',
@@ -106,22 +124,12 @@ class Transaction extends Model
     $query = $query->orderBy('data','asc');
 
     $results = $query->get();
-
-    // dd(\DB::getQueryLog());
     return $results;
   }
 
   static function getLendingsNotPaidTotals(){
-    // \DB::enableQueryLog();
     $lendings = [];
 
-    // $query = new Transaction;
-    // $query = $query->select('id_cliente','valor','data_recebimento');
-    // $query = $query->where('tipo','emprestimo');
-    // $query = $query->whereDate('data', '<=', new \DateTime);
-    // $query = $query->where('data_recebimento',null);
-    // $query = $query->whereBetween('data',[$dateStart,$dateEnd]);
-    // $query = $query->groupBy('id_cliente');
     $_lendings = self::getLendingsNotPaid();
 
     if ($_lendings){
@@ -145,9 +153,6 @@ class Transaction extends Model
       }
     }
 
-
-    // dd(\DB::getQueryLog());
-
     return $lendings;
   }
 
@@ -156,28 +161,21 @@ class Transaction extends Model
 
     $year = isset($filters['year']) ? $filters['year'] : null;
     $month = isset($filters['month']) ? $filters['month'] : null;
+    $id_categoria = isset($filters['id_categoria']) ? $filters['id_categoria'] : null;
+    $id_cartao = isset($filters['id_cartao']) ? $filters['id_cartao'] : null;
+    $id_pessoa = isset($filters['id_pessoa']) ? $filters['id_pessoa'] : null;
+    $id_caixa = isset($filters['id_caixa']) ? $filters['id_caixa'] : null;
+    $tipo = isset($filters['tipo']) ? $filters['tipo'] : null;
 
-    // return $query->when($year, function($query) use ($year){
-    //   return $query->whereYear('data','=','2020');
-    // })->limit(10)->get();
+    // Apply ordering
+    if ($orders){
+      foreach($orders as $field => $direction){
+        $query = $query->orderBy($field, $direction);
+      }
+    } else {
+      $query = $query->orderBy('data_pagamento')->orderBy('data');
+    }
 
-    $query = $query->when($year, function($query) use ($year){
-      return $query->whereYear('data','=',$year);
-    });
-
-    $query = $query->when($month, function($query) use ($month){
-      return $query->whereMonth('data','=',$month);
-    });
-// ::whereYear('data','=',$year)->whereMonth('data','=',$month)->where($conditions)->orderBy('data_pagamento')->orderBy('data')->get();
-
-    // if (!isset($filters['year'])){
-      // $Transacion->whereYear('data','=',$filters['year']);
-    // }
-
-    // if (!isset($filters['month'])){
-    //   $Transacion->whereMonth('data','=',$month);
-    // }
-
-    return $query->orderBy('data_pagamento')->orderBy('data')->limit(10)->get();
+    return $query->get();
   }
 }

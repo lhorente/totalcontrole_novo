@@ -53,7 +53,10 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
   Route::post('/credit_cards/store',[CreditCardsController::class, 'store']);
   Route::get('/credit_cards/remove/{id}',[CreditCardsController::class, 'remove']);
 
-  Route::get('/transactions',[TransactionsController::class, 'index']);
+  Route::get('/transactions',[TransactionsController::class, 'index'])->name('transactions.index');
   Route::get('/transactions/search',[TransactionsController::class, 'search']);
   Route::get('/transactions/modal_save',[TransactionsController::class, 'saveModal']);
+  Route::get('/transactions/import',[TransactionsController::class, 'import'])->name('transactions.import');
+  Route::post('/transactions/import-preview',[TransactionsController::class, 'importPreview'])->name('transactions.importPreview');
+  Route::post('/transactions/import-store',[TransactionsController::class, 'importStore'])->name('transactions.importStore');
 });
