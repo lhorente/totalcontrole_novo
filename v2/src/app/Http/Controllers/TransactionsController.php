@@ -220,7 +220,7 @@ class TransactionsController extends Controller
           'id_cartao' => $item['id_cartao'] ?? null,
           'id_caixa' => $idCaixa,
           'tipo' => $item['tipo'] ?? 'despesa',
-          'id_pessoa' => $item['id_pessoa'] ?? null,
+          'id_cliente' => $item['id_cliente'] ?? null,
           'id_usuario' => Auth::id(),
           'chave_banco' => $chaveBanco,
         ]);

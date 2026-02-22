@@ -48,6 +48,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
             <ul aria-labelledby="dropdownSubMenu1" class="dropdown-menu border-0 shadow">
               <li><a href="{{ url('/transactions') }}" class="dropdown-item">Movimentações</a></li>
               <li><a href="{{ url('/wallets/dashboard') }}" class="dropdown-item">Resumo de carteiras</a></li>
+              <li><a href="{{ url('/transactions/import') }}" class="dropdown-item">Importar Tabela Cartão</a></li>
             </ul>
           </li>
           <li class="nav-item dropdown">

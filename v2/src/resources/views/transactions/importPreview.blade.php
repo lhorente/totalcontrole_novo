@@ -164,7 +164,7 @@
                       
                       <td>
                         <select class="form-control form-control-sm pessoa-select" 
-                                name="transacoes[{{ $loop->index }}][id_pessoa]" 
+                                name="transacoes[{{ $loop->index }}][id_cliente]" 
                                 id="pessoa-{{ $loop->index }}" 
                                 style="display: none;">
                           <option value="">Selecione</option>
