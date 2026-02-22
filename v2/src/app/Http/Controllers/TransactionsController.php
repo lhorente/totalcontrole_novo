@@ -157,7 +157,11 @@ class TransactionsController extends Controller
       return $transaction;
     });
 
-    $categorias = Category::where('id_usuario', Auth::id())->get();
+    $categorias = Category::where('id_usuario', Auth::id())
+                          ->whereNull('parent_id')
+                          ->where('status', 'a')
+                          ->orderBy('nome')
+                          ->get();
     $pessoas = Contact::where('id_usuario', Auth::id())->get();
 
     return view('transactions/importPreview', [
