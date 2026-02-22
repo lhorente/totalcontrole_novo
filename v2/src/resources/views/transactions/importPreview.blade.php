@@ -111,7 +111,7 @@
                         @if($transaction['is_duplicada'])
                           <i class="fas fa-exclamation-triangle text-warning" title="Já existe no sistema (chave duplicada)"></i>
                         @elseif($transaction['is_duplicada_por_valor'])
-                          <i class="fas fa-search" style="color:#e07b1a;" title="Mesmo valor já lançado neste mês para este cartão"></i>
+                          <i class="fas fa-search" style="color:#e07b1a;" title="Mesmo valor já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_descricao'] }}"></i>
                         @endif
                       </td>
                       
