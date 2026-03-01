@@ -146,11 +146,25 @@ class TransactionsController extends Controller
                                   ->whereMonth('data', $dataFaturaCarbon->month)
                                   ->first() : null;
       $isDuplicadaPorValor = $transacaoSimilar !== null;
+
+      // Verifica se existe transação com valor próximo (desconsiderando centavos), mesmo cartão, no mesmo mês
+      $valorInteiro = (int) floor(abs($valor));
+      $transacaoSimilarAproximada = (!$isDuplicada && !$isDuplicadaPorValor) ? Transaction::where('id_usuario', Auth::id())
+                                  ->where('id_cartao', $idCartao)
+                                  ->whereRaw('FLOOR(ABS(valor)) = ?', [$valorInteiro])
+                                  ->whereYear('data', $dataFaturaCarbon->year)
+                                  ->whereMonth('data', $dataFaturaCarbon->month)
+                                  ->first() : null;
+      $isDuplicadaPorValorAproximado = $transacaoSimilarAproximada !== null;
       
       $transaction['is_duplicada'] = $isDuplicada;
       $transaction['is_duplicada_por_valor'] = $isDuplicadaPorValor;
       $transaction['duplicada_por_valor_descricao'] = $isDuplicadaPorValor
           ? ($transacaoSimilar->descricao ?: $transacaoSimilar->descricao_banco)
+          : null;
+      $transaction['is_duplicada_por_valor_aproximado'] = $isDuplicadaPorValorAproximado;
+      $transaction['duplicada_por_valor_aproximado_descricao'] = $isDuplicadaPorValorAproximado
+          ? ($transacaoSimilarAproximada->descricao ?: $transacaoSimilarAproximada->descricao_banco)
           : null;
       $transaction['chave_banco'] = $chaveBanco;
       

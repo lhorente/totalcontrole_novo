@@ -35,6 +35,7 @@
         @php
           $duplicadas = $transactions->filter(function($t) { return $t['is_duplicada'] ?? false; })->count();
           $valorDuplicadas = $transactions->filter(function($t) { return $t['is_duplicada_por_valor'] ?? false; })->count();
+          $valorAproximadoDuplicadas = $transactions->filter(function($t) { return $t['is_duplicada_por_valor_aproximado'] ?? false; })->count();
         @endphp
 
         @if($duplicadas > 0)
@@ -58,6 +59,24 @@
                 <strong>{{ $tSimilar['descricao_banco'] }}</strong>
                 (R$ {{ number_format($tSimilar['valor'], 2, ',', '.') }})
                 → encontrou: <em>{{ $tSimilar['duplicada_por_valor_descricao'] }}</em>
+              </li>
+            @endforeach
+          </ul>
+        </div>
+        @endif
+
+        @if($valorAproximadoDuplicadas > 0)
+        <div class="alert alert-dismissible" style="background-color:#e8f4fd;border-color:#7ab8e8;color:#1a4a7a;">
+          <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+          <h5><i class="icon fas fa-balance-scale"></i> Valor aproximado já lançado neste mês!</h5>
+          <p><strong>{{ $valorAproximadoDuplicadas }}</strong> transação(ões) possuem valor aproximado (desconsiderando centavos) de uma transação já existente no mesmo cartão e mês.</p>
+          <p>As linhas em <span style="background:#e8f4fd;padding:2px 6px;">azul</span> estão marcadas, mas verifique se não são repetições com diferença de arredondamento.</p>
+          <ul class="mb-0 mt-1">
+            @foreach($transactions->filter(fn($t) => $t['is_duplicada_por_valor_aproximado'] ?? false) as $tSimilar)
+              <li>
+                <strong>{{ $tSimilar['descricao_banco'] }}</strong>
+                (R$ {{ number_format($tSimilar['valor'], 2, ',', '.') }})
+                → encontrou: <em>{{ $tSimilar['duplicada_por_valor_aproximado_descricao'] }}</em>
               </li>
             @endforeach
           </ul>
@@ -97,7 +116,7 @@
                   </thead>
                   <tbody>
                     @foreach ($transactions as $index => $transaction)
-                    <tr class="{{ $transaction['is_duplicada'] ? 'table-warning' : ($transaction['is_duplicada_por_valor'] ? 'tr-valor-similar' : '') }}">
+                    <tr class="{{ $transaction['is_duplicada'] ? 'table-warning' : ($transaction['is_duplicada_por_valor'] ? 'tr-valor-similar' : ($transaction['is_duplicada_por_valor_aproximado'] ? 'tr-valor-aproximado' : '')) }}">
                       <td class="text-center">
                         <input type="checkbox" 
                                class="import-checkbox" 
@@ -112,6 +131,8 @@
                           <i class="fas fa-exclamation-triangle text-warning" title="Já existe no sistema (chave duplicada)"></i>
                         @elseif($transaction['is_duplicada_por_valor'])
                           <i class="fas fa-search" style="color:#e07b1a;" title="Mesmo valor já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_descricao'] }}"></i>
+                        @elseif($transaction['is_duplicada_por_valor_aproximado'])
+                          <i class="fas fa-balance-scale" style="color:#2a7ab8;" title="Valor aproximado (sem centavos) já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_aproximado_descricao'] }}"></i>
                         @endif
                       </td>
                       
@@ -215,6 +236,12 @@
   }
   .tr-valor-similar:hover {
     background-color: #fbd4b0 !important;
+  }
+  .tr-valor-aproximado {
+    background-color: #e8f4fd !important;
+  }
+  .tr-valor-aproximado:hover {
+    background-color: #cce6f8 !important;
   }
 </style>
 
