@@ -116,7 +116,7 @@
                   </thead>
                   <tbody>
                     @foreach ($transactions as $index => $transaction)
-                    <tr class="{{ $transaction['is_duplicada'] ? 'table-warning' : ($transaction['is_duplicada_por_valor'] ? 'tr-valor-similar' : ($transaction['is_duplicada_por_valor_aproximado'] ? 'tr-valor-aproximado' : '')) }}">
+                    <tr class="{{ $transaction['is_duplicada'] ? 'table-warning' : ($transaction['is_duplicada_por_valor'] ? 'tr-valor-similar' : ($transaction['is_duplicada_por_valor_aproximado'] ? 'tr-valor-similar' : '')) }}">
                       <td class="text-center">
                         <input type="checkbox" 
                                class="import-checkbox" 
@@ -127,13 +127,6 @@
                       
                       <td>
                         {{ $loop->iteration }}
-                        @if($transaction['is_duplicada'])
-                          <i class="fas fa-exclamation-triangle text-warning" title="Já existe no sistema (chave duplicada)"></i>
-                        @elseif($transaction['is_duplicada_por_valor'])
-                          <i class="fas fa-search" style="color:#e07b1a;" title="Mesmo valor já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_descricao'] }}"></i>
-                        @elseif($transaction['is_duplicada_por_valor_aproximado'])
-                          <i class="fas fa-balance-scale" style="color:#2a7ab8;" title="Valor aproximado (sem centavos) já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_aproximado_descricao'] }}"></i>
-                        @endif
                       </td>
                       
                       <td>
@@ -142,6 +135,14 @@
                                name="transacoes[{{ $loop->index }}][descricao_banco]" 
                                value="{{ $transaction['descricao_banco'] }}" 
                                readonly>
+
+                          @if($transaction['is_duplicada'])
+                            <span class="">Já existe no sistema (chave duplicada)</span>
+                          @elseif($transaction['is_duplicada_por_valor'])
+                            <span class="">Mesmo valor já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_descricao'] }}</span>
+                          @elseif($transaction['is_duplicada_por_valor_aproximado'])
+                            <span class="">Valor aproximado (sem centavos) já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_aproximado_descricao'] }}</span>
+                          @endif
                       </td>
                       
                       <td>
@@ -228,17 +229,26 @@
   .table-warning {
     background-color: #fff3cd !important;
   }
+  .tr-warning span {
+    font-size: 12px;
+  }
   .table-warning:hover {
     background-color: #ffe8a1 !important;
   }
   .tr-valor-similar {
     background-color: #fde8d0 !important;
   }
+  .tr-valor-similar span {
+    font-size: 12px;
+  }
   .tr-valor-similar:hover {
     background-color: #fbd4b0 !important;
   }
   .tr-valor-aproximado {
     background-color: #e8f4fd !important;
+  }
+  .tr-valor-aproximado span {
+    font-size: 12px;
   }
   .tr-valor-aproximado:hover {
     background-color: #cce6f8 !important;
