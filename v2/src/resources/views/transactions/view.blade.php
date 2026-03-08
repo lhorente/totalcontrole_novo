@@ -27,6 +27,14 @@
 
 <div class="content">
   <div class="container">
+
+    @if (session('success'))
+    <div class="alert alert-success alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+      {{ session('success') }}
+    </div>
+    @endif
+
     <div class="row">
 
       {{-- Main detail card --}}
@@ -147,6 +155,9 @@
               <a href="{{ route('transactions.month', [$transaction->data->format('Y'), (int)$transaction->data->format('m')]) }}"
                  class="btn btn-sm btn-outline-secondary">
                 <i class="fa fa-arrow-left"></i> Voltar
+              </a>
+              <a href="{{ route('transactions.edit', $transaction->id) }}" class="btn btn-sm btn-primary ml-1">
+                <i class="fa fa-edit"></i> Editar
               </a>
             </div>
           </div>
