@@ -223,22 +223,14 @@
       {{-- Navigation (only when filtering by month) --}}
       @if ($month)
       <div class="col-md-12 d-flex justify-content-between mb-2">
-        @php
-          $navBefore = ($nav_route ?? 'transactions.search') === 'transactions.month'
-            ? route('transactions.month', [$beforeMonthObj->format('Y'), (int)$beforeMonthObj->format('m')])
-            : route('transactions.search', ['y' => $beforeMonthObj->format('Y'), 'm' => (int)$beforeMonthObj->format('m')]);
-          $navNext = ($nav_route ?? 'transactions.search') === 'transactions.month'
-            ? route('transactions.month', [$nextMonthObj->format('Y'), (int)$nextMonthObj->format('m')])
-            : route('transactions.search', ['y' => $nextMonthObj->format('Y'), 'm' => (int)$nextMonthObj->format('m')]);
-        @endphp
-        <a href="{{ $navBefore }}" class="btn btn-sm btn-outline-secondary">
+        <a href="{{ route('transactions.search', array_filter(['y' => $beforeMonthObj->format('Y'), 'm' => (int)$beforeMonthObj->format('m')])) }}" class="btn btn-sm btn-outline-secondary">
           <i class="fa fa-chevron-left"></i> {{ $beforeMonthObj->format('M/Y') }}
         </a>
         <strong class="align-self-center">
           @php $meses = [1=>'Janeiro',2=>'Fevereiro',3=>'Março',4=>'Abril',5=>'Maio',6=>'Junho',7=>'Julho',8=>'Agosto',9=>'Setembro',10=>'Outubro',11=>'Novembro',12=>'Dezembro']; @endphp
           {{ $meses[$month] ?? $month }} / {{ $year }}
         </strong>
-        <a href="{{ $navNext }}" class="btn btn-sm btn-outline-secondary">
+        <a href="{{ route('transactions.search', array_filter(['y' => $nextMonthObj->format('Y'), 'm' => (int)$nextMonthObj->format('m')])) }}" class="btn btn-sm btn-outline-secondary">
           {{ $nextMonthObj->format('M/Y') }} <i class="fa fa-chevron-right"></i>
         </a>
       </div>

@@ -52,9 +52,9 @@ class TransactionsController extends Controller
     return view('transactions/index',compact('transactions'));
   }
 
-  public function search(Request $request){
-    $month = $request->input('m',date('m'));
-    $year = $request->input('y',date('Y'));
+  public function month(Request $request, $year = null, $month = null){
+    $year  = $year  ?? date('Y');
+    $month = $month ?? date('n');
     $type = $request->input('t');
     $id_cliente = $request->input('ct');
     $id_categoria = $request->input('categoria');
@@ -62,13 +62,37 @@ class TransactionsController extends Controller
     $id_pessoa = $request->input('pessoa');
     $id_caixa = $request->input('caixa');
 
+    // Load selected filter objects
+    $categoria = $id_categoria ? Category::find($id_categoria) : null;
+    $cartao    = $id_cartao   ? CreditCard::find($id_cartao)  : null;
+    $pessoa    = $id_pessoa   ? Contact::find($id_pessoa)     : null;
+    $caixa     = $id_caixa   ? Wallet::where('id', $id_caixa)->where('id_usuario', Auth::id())->first() : null;
+
+    // Load filter option lists
+    $categorias = Category::where('id_usuario', Auth::id())
+                           ->where('status', 'a')
+                           ->orderBy('nome')
+                           ->get();
+
+    $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->orderBy('descricao')
+                          ->get();
+
+    $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->orderBy('nome')
+                       ->get();
+
+    $caixas = Wallet::where('id_usuario', Auth::id())
+                     ->orderBy('titulo')
+                     ->get();
+
     $ps = $request->input('ps');
     if ($ps == 'lendings_not_paid'){
       $transactions = Transaction::getLendingsNotPaid($id_cliente);
     } else {
       $filters = [
-        'year' => $year,
-        'month' => $month
+        'year'  => $year,
+        'month' => $month,
       ];
 
       if ($type){
@@ -90,9 +114,15 @@ class TransactionsController extends Controller
       $transactions = Transaction::search($filters, ['data_pagamento'=>'asc','data'=>'asc']);
     }
 
+    // Totals
+    $total_a_pagar    = $transactions->where('tipo', 'despesa')->whereNull('data_pagamento')->sum('valor');
+    $total_pago       = $transactions->where('tipo', 'despesa')->whereNotNull('data_pagamento')->sum('valor');
+    $total_a_receber  = $transactions->where('tipo', 'lucro')->whereNull('data_pagamento')->sum('valor');
+    $total_recebido   = $transactions->where('tipo', 'lucro')->whereNotNull('data_pagamento')->sum('valor');
+
     $currentDateObj = new \DateTime;
-    $currentDateObj->setDate($year,$month,1);
-    $currentDateObj->setTime(0,0);
+    $currentDateObj->setDate($year, $month ?: date('m'), 1);
+    $currentDateObj->setTime(0, 0);
 
     $nextMonthObj = clone $currentDateObj;
     $nextMonthObj->add(new \DateInterval('P1M'));
@@ -100,7 +130,132 @@ class TransactionsController extends Controller
     $beforeMonthObj = clone $currentDateObj;
     $beforeMonthObj->sub(new \DateInterval('P1M'));
 
-    return view('transactions/search',compact('transactions','nextMonthObj','beforeMonthObj','year'));
+    $nav_route = 'transactions.month';
+
+    return view('transactions/search', compact(
+      'transactions',
+      'nextMonthObj',
+      'beforeMonthObj',
+      'year',
+      'month',
+      'type',
+      'categoria',
+      'categorias',
+      'cartao',
+      'cartoes',
+      'pessoa',
+      'pessoas',
+      'caixa',
+      'caixas',
+      'total_a_pagar',
+      'total_pago',
+      'total_a_receber',
+      'total_recebido',
+      'nav_route'
+    ));
+  }
+
+  public function search(Request $request){
+    $month = $request->input('m');
+    $year = $request->input('y', date('Y'));
+    $type = $request->input('t');
+    $id_cliente = $request->input('ct');
+    $id_categoria = $request->input('categoria');
+    $id_cartao = $request->input('cartao');
+    $id_pessoa = $request->input('pessoa');
+    $id_caixa = $request->input('caixa');
+
+    // Load selected filter objects
+    $categoria = $id_categoria ? Category::find($id_categoria) : null;
+    $cartao    = $id_cartao   ? CreditCard::find($id_cartao)  : null;
+    $pessoa    = $id_pessoa   ? Contact::find($id_pessoa)     : null;
+    $caixa     = $id_caixa   ? Wallet::where('id', $id_caixa)->where('id_usuario', Auth::id())->first() : null;
+
+    // Load filter option lists
+    $categorias = Category::where('id_usuario', Auth::id())
+                           ->where('status', 'a')
+                           ->orderBy('nome')
+                           ->get();
+
+    $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->orderBy('descricao')
+                          ->get();
+
+    $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->orderBy('nome')
+                       ->get();
+
+    $caixas = Wallet::where('id_usuario', Auth::id())
+                     ->orderBy('titulo')
+                     ->get();
+
+    $ps = $request->input('ps');
+    if ($ps == 'lendings_not_paid'){
+      $transactions = Transaction::getLendingsNotPaid($id_cliente);
+    } else {
+      $filters = [
+        'year'  => $year,
+        'month' => $month,
+      ];
+
+      if ($type){
+        $filters['tipo'] = $type;
+      }
+      if ($id_categoria){
+        $filters['id_categoria'] = $id_categoria;
+      }
+      if ($id_cartao){
+        $filters['id_cartao'] = $id_cartao;
+      }
+      if ($id_pessoa){
+        $filters['id_pessoa'] = $id_pessoa;
+      }
+      if ($id_caixa){
+        $filters['id_caixa'] = $id_caixa;
+      }
+
+      $transactions = Transaction::search($filters, ['data_pagamento'=>'asc','data'=>'asc']);
+    }
+
+    // Totals
+    $total_a_pagar    = $transactions->where('tipo', 'despesa')->whereNull('data_pagamento')->sum('valor');
+    $total_pago       = $transactions->where('tipo', 'despesa')->whereNotNull('data_pagamento')->sum('valor');
+    $total_a_receber  = $transactions->where('tipo', 'lucro')->whereNull('data_pagamento')->sum('valor');
+    $total_recebido   = $transactions->where('tipo', 'lucro')->whereNotNull('data_pagamento')->sum('valor');
+
+    $currentDateObj = new \DateTime;
+    $currentDateObj->setDate($year, $month ?: date('m'), 1);
+    $currentDateObj->setTime(0, 0);
+
+    $nextMonthObj = clone $currentDateObj;
+    $nextMonthObj->add(new \DateInterval('P1M'));
+
+    $beforeMonthObj = clone $currentDateObj;
+    $beforeMonthObj->sub(new \DateInterval('P1M'));
+
+    $nav_route = 'transactions.search';
+
+    return view('transactions/search', compact(
+      'transactions',
+      'nextMonthObj',
+      'beforeMonthObj',
+      'year',
+      'month',
+      'type',
+      'categoria',
+      'categorias',
+      'cartao',
+      'cartoes',
+      'pessoa',
+      'pessoas',
+      'caixa',
+      'caixas',
+      'total_a_pagar',
+      'total_pago',
+      'total_a_receber',
+      'total_recebido',
+      'nav_route'
+    ));
   }
 
   public function saveModal(Request $request){

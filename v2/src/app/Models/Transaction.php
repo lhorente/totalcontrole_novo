@@ -156,24 +156,62 @@ class Transaction extends Model
     return $lendings;
   }
 
-  static function search($filters,$orders){
-    $query = new Transaction();
+  static function search($filters, $orders = []){
+    $query = (new Transaction())->newQuery();
 
-    $year = isset($filters['year']) ? $filters['year'] : null;
-    $month = isset($filters['month']) ? $filters['month'] : null;
-    $id_categoria = isset($filters['id_categoria']) ? $filters['id_categoria'] : null;
-    $id_cartao = isset($filters['id_cartao']) ? $filters['id_cartao'] : null;
-    $id_pessoa = isset($filters['id_pessoa']) ? $filters['id_pessoa'] : null;
-    $id_caixa = isset($filters['id_caixa']) ? $filters['id_caixa'] : null;
-    $tipo = isset($filters['tipo']) ? $filters['tipo'] : null;
+    $year        = $filters['year']         ?? null;
+    $month       = $filters['month']        ?? null;
+    $id_categoria = $filters['id_categoria'] ?? null;
+    $id_cartao   = $filters['id_cartao']    ?? null;
+    $id_pessoa   = $filters['id_pessoa']    ?? null;
+    $id_caixa    = $filters['id_caixa']     ?? null;
+    $tipo        = $filters['tipo']         ?? null;
+
+    // Always exclude cancelled transactions
+    $query->where('status', '!=', 'cancelado');
+
+    if ($year) {
+      $query->whereYear('data', $year);
+    }
+
+    if ($month) {
+      $query->whereMonth('data', $month);
+    }
+
+    // Category filter: include subcategories
+    if ($id_categoria) {
+      $subcategoryIds = Category::where('parent_id', $id_categoria)->pluck('id')->toArray();
+      $categoryIds = array_merge([$id_categoria], $subcategoryIds);
+      $query->whereIn('id_categoria', $categoryIds);
+    }
+
+    if ($id_cartao) {
+      $query->where('id_cartao', $id_cartao);
+    }
+
+    // id_pessoa maps to id_cliente column
+    if ($id_pessoa) {
+      $query->where('id_cliente', $id_pessoa);
+    }
+
+    if ($id_caixa) {
+      $query->where('id_caixa', $id_caixa);
+    }
+
+    if ($tipo) {
+      $query->where('tipo', $tipo);
+    }
+
+    // Eager load relationships to avoid N+1
+    $query->with(['category', 'contact', 'wallet', 'credit_card']);
 
     // Apply ordering
-    if ($orders){
-      foreach($orders as $field => $direction){
-        $query = $query->orderBy($field, $direction);
+    if ($orders) {
+      foreach ($orders as $field => $direction) {
+        $query->orderBy($field, $direction);
       }
     } else {
-      $query = $query->orderBy('data_pagamento')->orderBy('data');
+      $query->orderBy('data_pagamento')->orderBy('data');
     }
 
     return $query->get();
