@@ -258,6 +258,14 @@ class TransactionsController extends Controller
     ));
   }
 
+  public function view($id){
+    // CurrentUserScope garante que apenas transações do usuário logado são retornadas
+    $transaction = Transaction::with(['category', 'contact', 'wallet', 'credit_card'])
+                               ->findOrFail($id);
+
+    return view('transactions/view', compact('transaction'));
+  }
+
   public function saveModal(Request $request){
     return view('transactions/modal_save');
   }

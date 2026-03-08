@@ -281,7 +281,7 @@
                   @foreach ($transactions as $transaction)
                   <tr class=""
                       style="cursor:pointer"
-                      onclick="window.location='/transactions/edit/{{ $transaction->id }}'">
+                      onclick="window.location='{{ route('transactions.view', $transaction->id) }}'">
                     <td>{{ $transaction->data->format('d/m/Y') }}</td>
                     <td>
                       @if ($transaction->category)
@@ -339,7 +339,7 @@
         {{-- CARD VIEW --}}
         <div id="view-cards" style="display:none">
           @forelse ($transactions as $transaction)
-          <a href="/transactions/edit/{{ $transaction->id }}" class="info-box info-box-transaction">
+          <a href="{{ route('transactions.view', $transaction->id) }}" class="info-box info-box-transaction">
             <span class="info-box-icon {{ $transaction->data_pagamento ? 'bg-secondary' : ($transaction->tipo === 'receita' ? 'bg-success' : 'bg-danger') }}">
               @if ($transaction->category)
               <i class="{{ $transaction->category->icon_class }}"></i>
