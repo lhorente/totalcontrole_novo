@@ -266,6 +266,65 @@ class TransactionsController extends Controller
     return view('transactions/view', compact('transaction'));
   }
 
+  public function create(Request $request){
+    $categorias = Category::where('id_usuario', Auth::id())
+                           ->where('status', 'a')
+                           ->orderBy('nome')
+                           ->get();
+
+    $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->orderBy('descricao')
+                          ->get();
+
+    $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->orderBy('nome')
+                       ->get();
+
+    $caixas = Wallet::where('id_usuario', Auth::id())
+                     ->orderBy('titulo')
+                     ->get();
+
+    // Pré-selecionar tipo/data via query string: /transactions/new?tipo=despesa&data=2026-03-08
+    $defaults = [
+      'tipo' => $request->input('tipo', 'despesa'),
+      'data' => $request->input('data', date('Y-m-d')),
+    ];
+
+    return view('transactions/new', compact('categorias', 'cartoes', 'pessoas', 'caixas', 'defaults'));
+  }
+
+  public function store(Request $request){
+    $request->validate([
+      'descricao'      => 'nullable|string|max:255',
+      'valor'          => 'required|numeric|min:0',
+      'data'           => 'required|date',
+      'tipo'           => 'required|in:despesa,receita,transferencia,emprestimo',
+      'id_categoria'   => 'nullable|integer',
+      'id_caixa'       => 'nullable|integer',
+      'id_cartao'      => 'nullable|integer',
+      'id_cliente'     => 'nullable|integer',
+      'data_pagamento' => 'nullable|date',
+    ]);
+
+    $transaction = Transaction::create([
+      'id_usuario'     => Auth::id(),
+      'descricao'      => $request->input('descricao'),
+      'valor'          => $request->input('valor'),
+      'data'           => $request->input('data'),
+      'tipo'           => $request->input('tipo'),
+      'id_categoria'   => $request->input('id_categoria') ?: null,
+      'id_caixa'       => $request->input('id_caixa') ?: null,
+      'id_cartao'      => $request->input('id_cartao') ?: null,
+      'id_cliente'     => $request->input('id_cliente') ?: null,
+      'data_pagamento' => $request->input('data_pagamento') ?: null,
+      'status'         => 'disponivel',
+    ]);
+
+    return redirect()
+      ->route('transactions.view', $transaction->id)
+      ->with('success', 'Lançamento criado com sucesso.');
+  }
+
   public function edit($id){
     $transaction = Transaction::with(['category', 'contact', 'wallet', 'credit_card'])
                                ->findOrFail($id);

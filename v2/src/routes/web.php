@@ -57,6 +57,8 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
   Route::get('/transactions/month/{year?}/{month?}',[TransactionsController::class, 'month'])->name('transactions.month');
   Route::get('/transactions/search',[TransactionsController::class, 'search'])->name('transactions.search');
   Route::get('/transactions/view/{id}',[TransactionsController::class, 'view'])->name('transactions.view');
+  Route::get('/transactions/new',[TransactionsController::class, 'create'])->name('transactions.create');
+  Route::post('/transactions/new',[TransactionsController::class, 'store'])->name('transactions.store');
   Route::get('/transactions/edit/{id}',[TransactionsController::class, 'edit'])->name('transactions.edit');
   Route::post('/transactions/edit/{id}',[TransactionsController::class, 'update'])->name('transactions.update');
   Route::get('/transactions/modal_save',[TransactionsController::class, 'saveModal']);
