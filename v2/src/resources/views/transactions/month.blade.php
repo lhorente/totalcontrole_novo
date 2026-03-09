@@ -5,12 +5,12 @@
   <div class="container">
     <div class="row mb-2">
       <div class="col-sm-6">
-        <h1 class="m-0 text-dark">Busca de Lançamentos</h1>
+        <h1 class="m-0 text-dark">Resumo mensal</h1>
       </div>
       <div class="col-sm-6">
         <ol class="breadcrumb float-sm-right">
           <li class="breadcrumb-item"><a href="{{ url('/') }}">Dashboard</a></li>
-          <li class="breadcrumb-item"><a href="{{ route('transactions.search') }}">Busca</a></li>
+          <li class="breadcrumb-item"><a href="{{ route('transactions.month') }}">Resumo mensal</a></li>
           <li class="breadcrumb-item active">Lançamentos</li>
         </ol>
       </div>
@@ -308,6 +308,138 @@
                   <td class="text-right text-success">
                     R$ {{ number_format($emprestimosRecebidos, 2, ',', '.') }}
                   </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+      @endif
+
+      {{-- Summary by category --}}
+      @php
+        $transactionsByCategory = $transactions->groupBy('id_categoria');
+      @endphp
+      @if ($transactionsByCategory->count() > 0)
+      <div class="col-md-12">
+        <div class="card collapsed-card card-primary">
+          <div class="card-header" data-card-widget="collapse" style="cursor:pointer">
+            <h3 class="card-title">
+              <i class="fas fa-tags mr-1"></i>
+              Resumo por Categoria
+              <span class="badge badge-light ml-2">{{ $transactionsByCategory->count() }}</span>
+            </h3>
+            <div class="card-tools">
+              <button type="button" class="btn btn-tool">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th class="text-center" style="width:80px">Qtd</th>
+                  <th class="text-right" style="width:140px">Total</th>
+                  <th style="width:60px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach ($transactionsByCategory as $idCat => $group)
+                @php
+                  $catNome  = optional($group->first()->category)->nome ?? 'Sem categoria';
+                  $catIcon  = optional($group->first()->category)->icon_class;
+                  $catTotal = $group->sum('valor');
+                @endphp
+                <tr>
+                  <td>
+                    @if ($catIcon)
+                      <i class="{{ $catIcon }} text-muted mr-1" style="font-size:.85em"></i>
+                    @endif
+                    {{ $catNome }}
+                  </td>
+                  <td class="text-center text-muted">{{ $group->count() }}</td>
+                  <td class="text-right font-weight-bold">R$ {{ number_format($catTotal, 2, ',', '.') }}</td>
+                  <td class="text-right">
+                    @if ($idCat)
+                    <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['t','cartao','pessoa','caixa'])), ['categoria' => $idCat])) }}"
+                       class="btn btn-xs btn-outline-secondary" title="Filtrar por categoria">
+                      <i class="fa fa-search fa-xs"></i>
+                    </a>
+                    @endif
+                  </td>
+                </tr>
+                @endforeach
+              </tbody>
+              <tfoot class="font-weight-bold">
+                <tr class="bg-light">
+                  <td>Total</td>
+                  <td class="text-center text-muted">{{ $transactions->count() }}</td>
+                  <td class="text-right">R$ {{ number_format($transactions->sum('valor'), 2, ',', '.') }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+      @endif
+
+      {{-- Summary by credit card --}}
+      @php
+        $transactionsByCard = $transactions->filter(fn($t) => !is_null($t->id_cartao))->groupBy('id_cartao');
+      @endphp
+      @if ($transactionsByCard->count() > 0)
+      <div class="col-md-12">
+        <div class="card collapsed-card card-dark">
+          <div class="card-header" data-card-widget="collapse" style="cursor:pointer">
+            <h3 class="card-title">
+              <i class="fas fa-credit-card mr-1"></i>
+              Resumo por Cartão
+              <span class="badge badge-light ml-2">{{ $transactionsByCard->count() }}</span>
+            </h3>
+            <div class="card-tools">
+              <button type="button" class="btn btn-tool">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Cartão</th>
+                  <th class="text-center" style="width:80px">Qtd</th>
+                  <th class="text-right" style="width:140px">Total</th>
+                  <th style="width:60px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach ($transactionsByCard as $idCard => $group)
+                @php
+                  $cardDesc  = optional($group->first()->credit_card)->descricao ?? '—';
+                  $cardTotal = $group->sum('valor');
+                @endphp
+                <tr>
+                  <td><i class="fa fa-credit-card fa-xs text-muted mr-1"></i> {{ $cardDesc }}</td>
+                  <td class="text-center text-muted">{{ $group->count() }}</td>
+                  <td class="text-right font-weight-bold">R$ {{ number_format($cardTotal, 2, ',', '.') }}</td>
+                  <td class="text-right">
+                    <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['t','categoria','pessoa','caixa'])), ['cartao' => $idCard])) }}"
+                       class="btn btn-xs btn-outline-secondary" title="Filtrar por cartão">
+                      <i class="fa fa-search fa-xs"></i>
+                    </a>
+                  </td>
+                </tr>
+                @endforeach
+              </tbody>
+              <tfoot class="font-weight-bold">
+                <tr class="bg-light">
+                  <td>Total</td>
+                  <td class="text-center text-muted">{{ $transactionsByCard->flatten()->count() }}</td>
+                  <td class="text-right">R$ {{ number_format($transactionsByCard->flatten()->sum('valor'), 2, ',', '.') }}</td>
                   <td></td>
                 </tr>
               </tfoot>
