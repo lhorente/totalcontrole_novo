@@ -176,49 +176,6 @@
       </div>
       @endif
 
-      {{-- Totals --}}
-      @if ($transactions->count() > 0)
-      <div class="col-md-12">
-        <div class="row">
-          <div class="col-6 col-md-3">
-            <div class="small-box bg-danger">
-              <div class="inner">
-                <h5>R$ {{ number_format($total_a_pagar, 2, ',', '.') }}</h5>
-                <p>A pagar</p>
-              </div>
-              <div class="icon"><i class="fas fa-arrow-down"></i></div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="small-box bg-secondary">
-              <div class="inner">
-                <h5>R$ {{ number_format($total_pago, 2, ',', '.') }}</h5>
-                <p>Pago</p>
-              </div>
-              <div class="icon"><i class="fas fa-check"></i></div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="small-box bg-success">
-              <div class="inner">
-                <h5>R$ {{ number_format($total_a_receber, 2, ',', '.') }}</h5>
-                <p>A receber</p>
-              </div>
-              <div class="icon"><i class="fas fa-arrow-up"></i></div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="small-box bg-info">
-              <div class="inner">
-                <h5>R$ {{ number_format($total_recebido, 2, ',', '.') }}</h5>
-                <p>Recebido</p>
-              </div>
-              <div class="icon"><i class="fas fa-wallet"></i></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      @endif
 
       {{-- Navigation (only when filtering by month) --}}
       @if ($month)

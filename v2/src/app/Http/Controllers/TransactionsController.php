@@ -132,7 +132,7 @@ class TransactionsController extends Controller
 
     $nav_route = 'transactions.month';
 
-    return view('transactions/search', compact(
+    return view('transactions/month', compact(
       'transactions',
       'nextMonthObj',
       'beforeMonthObj',

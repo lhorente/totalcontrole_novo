@@ -35,7 +35,7 @@
           </div>
 
           <div class="card-body">
-            <form method="GET" action="{{ route('transactions.search') }}">
+            <form method="GET" action="{{ route('transactions.month', [$year, $month]) }}">
 
               <div class="row">
 
@@ -46,27 +46,6 @@
                     <select class="form-control" name="ps">
                       <option value=""></option>
                       <option value="lendings_not_paid">Empréstimos não pagos</option>
-                    </select>
-                  </div>
-                </div>
-
-                {{-- Period (year) --}}
-                <div class="col-md-2">
-                  <div class="form-group">
-                    <label>Ano</label>
-                    <input type="number" class="form-control" name="y" value="{{ $year }}" placeholder="Ano" />
-                  </div>
-                </div>
-
-                {{-- Period (month) --}}
-                <div class="col-md-2">
-                  <div class="form-group">
-                    <label>Mês</label>
-                    <select class="form-control" name="m">
-                      <option value="">Ano inteiro</option>
-                      @foreach ([1=>'Janeiro',2=>'Fevereiro',3=>'Março',4=>'Abril',5=>'Maio',6=>'Junho',7=>'Julho',8=>'Agosto',9=>'Setembro',10=>'Outubro',11=>'Novembro',12=>'Dezembro'] as $n => $nome)
-                        <option value="{{ $n }}" @if((string)$month === (string)$n) selected @endif>{{ $nome }}</option>
-                      @endforeach
                     </select>
                   </div>
                 </div>
@@ -157,21 +136,48 @@
       </div>{{-- /.col filter card --}}
 
       {{-- Active filter badges --}}
-      @if ($categoria || $cartao || $pessoa || $caixa || $type || $month)
+      @if ($categoria || $cartao || $pessoa || $caixa || $type)
+      @php
+        $meses = [1=>'Jan',2=>'Fev',3=>'Mar',4=>'Abr',5=>'Mai',6=>'Jun',7=>'Jul',8=>'Ago',9=>'Set',10=>'Out',11=>'Nov',12=>'Dez'];
+        $baseParams = ['year' => $year, 'month' => $month];
+        $activeQuery = array_filter(request()->only(['t', 'categoria', 'cartao', 'pessoa', 'caixa', 'ps']));
+      @endphp
       <div class="col-md-12 mb-2">
-        <div>
-          <strong>Filtros ativos:</strong>
-          @if ($month)
-            @php $meses = [1=>'Jan',2=>'Fev',3=>'Mar',4=>'Abr',5=>'Mai',6=>'Jun',7=>'Jul',8=>'Ago',9=>'Set',10=>'Out',11=>'Nov',12=>'Dez']; @endphp
-            <span class="badge badge-secondary">{{ $meses[$month] ?? $month }}/{{ $year }}</span>
-          @else
-            <span class="badge badge-secondary">Ano: {{ $year }}</span>
+        <div class="d-flex align-items-center flex-wrap gap-1">
+          <strong class="mr-1">Filtros ativos:</strong>
+
+          <span class="badge badge-secondary">{{ $meses[$month] ?? $month }}/{{ $year }}</span>
+
+          @if ($type)
+            <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['t' => '']))) }}"
+               class="badge badge-info" title="Remover filtro de tipo">
+              {{ ucfirst($type) }} &times;
+            </a>
           @endif
-          @if ($type)<span class="badge badge-info">{{ ucfirst($type) }}</span>@endif
-          @if ($categoria)<span class="badge badge-warning">Cat: {{ $categoria->nome }}</span>@endif
-          @if ($cartao)<span class="badge badge-dark">Cartão: {{ $cartao->descricao }}</span>@endif
-          @if ($pessoa)<span class="badge badge-primary">Pessoa: {{ $pessoa->nome }}</span>@endif
-          @if ($caixa)<span class="badge badge-success">Carteira: {{ $caixa->titulo }}</span>@endif
+          @if ($categoria)
+            <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['categoria' => '']))) }}"
+               class="badge badge-warning" title="Remover filtro de categoria">
+              Cat: {{ $categoria->nome }} &times;
+            </a>
+          @endif
+          @if ($cartao)
+            <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['cartao' => '']))) }}"
+               class="badge badge-dark" title="Remover filtro de cartão">
+              Cartão: {{ $cartao->descricao }} &times;
+            </a>
+          @endif
+          @if ($pessoa)
+            <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['pessoa' => '']))) }}"
+               class="badge badge-primary" title="Remover filtro de pessoa">
+              Pessoa: {{ $pessoa->nome }} &times;
+            </a>
+          @endif
+          @if ($caixa)
+            <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['caixa' => '']))) }}"
+               class="badge badge-success" title="Remover filtro de carteira">
+              Carteira: {{ $caixa->titulo }} &times;
+            </a>
+          @endif
         </div>
       </div>
       @endif
@@ -220,17 +226,108 @@
       </div>
       @endif
 
+      {{-- Lending summary --}}
+      @php
+        $emprestimos = $transactions->where('tipo', 'emprestimo');
+        $emprestimosTotal   = $emprestimos->sum('valor');
+        $emprestimosPendentes = $emprestimos->filter(fn($t) => !$t->data_recebimento)->sum('valor');
+        $emprestimosRecebidos = $emprestimos->filter(fn($t) => $t->data_recebimento)->sum('valor');
+        $emprestimosPorPessoa = $emprestimos->groupBy('id_cliente');
+      @endphp
+      @if ($emprestimos->count() > 0)
+      <div class="col-md-12">
+        <div class="card collapsed-card card-warning">
+          <div class="card-header" data-card-widget="collapse" style="cursor:pointer">
+            <h3 class="card-title">
+              <i class="fas fa-hand-holding-usd mr-1"></i>
+              Resumo de Empréstimos
+              <span class="badge badge-light ml-2">{{ $emprestimos->count() }}</span>
+            </h3>
+            <div class="card-tools">
+              <span class="mr-3 text-sm">
+                <span class="text-warning font-weight-bold">
+                  R$ {{ number_format($emprestimosPendentes, 2, ',', '.') }}
+                </span>
+                <span class="text-muted"> pendente</span>
+                &nbsp;/&nbsp;
+                <span class="font-weight-bold">R$ {{ number_format($emprestimosTotal, 2, ',', '.') }}</span>
+                <span class="text-muted"> total</span>
+              </span>
+              <button type="button" class="btn btn-tool">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Pessoa</th>
+                  <th class="text-right" style="width:140px">Total</th>
+                  <th class="text-right" style="width:140px">Pendente</th>
+                  <th class="text-right" style="width:140px">Recebido</th>
+                  <th style="width:90px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach ($emprestimosPorPessoa as $idCliente => $group)
+                @php
+                  $pessoaNome   = optional($group->first()->contact)->nome ?? 'Sem pessoa';
+                  $pessoaTotal  = $group->sum('valor');
+                  $pessoaPend   = $group->filter(fn($t) => !$t->data_recebimento)->sum('valor');
+                  $pessoaReceb  = $group->filter(fn($t) => $t->data_recebimento)->sum('valor');
+                @endphp
+                <tr>
+                  <td>
+                    <i class="fa fa-user fa-xs text-muted mr-1"></i>
+                    {{ $pessoaNome }}
+                  </td>
+                  <td class="text-right">R$ {{ number_format($pessoaTotal, 2, ',', '.') }}</td>
+                  <td class="text-right {{ $pessoaPend > 0 ? 'text-warning font-weight-bold' : 'text-muted' }}">
+                    R$ {{ number_format($pessoaPend, 2, ',', '.') }}
+                  </td>
+                  <td class="text-right text-success">
+                    R$ {{ number_format($pessoaReceb, 2, ',', '.') }}
+                  </td>
+                  <td class="text-right">
+                    <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['t','categoria','cartao','caixa'])), ['pessoa' => $idCliente])) }}"
+                       class="btn btn-xs btn-outline-secondary" title="Ver lançamentos desta pessoa">
+                      <i class="fa fa-search fa-xs"></i>
+                    </a>
+                  </td>
+                </tr>
+                @endforeach
+              </tbody>
+              <tfoot class="font-weight-bold">
+                <tr class="bg-light">
+                  <td>Total</td>
+                  <td class="text-right">R$ {{ number_format($emprestimosTotal, 2, ',', '.') }}</td>
+                  <td class="text-right {{ $emprestimosPendentes > 0 ? 'text-warning' : '' }}">
+                    R$ {{ number_format($emprestimosPendentes, 2, ',', '.') }}
+                  </td>
+                  <td class="text-right text-success">
+                    R$ {{ number_format($emprestimosRecebidos, 2, ',', '.') }}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+      @endif
+
       {{-- Navigation (only when filtering by month) --}}
       @if ($month)
       <div class="col-md-12 d-flex justify-content-between mb-2">
-        <a href="{{ route('transactions.search', array_filter(['y' => $beforeMonthObj->format('Y'), 'm' => (int)$beforeMonthObj->format('m')])) }}" class="btn btn-sm btn-outline-secondary">
+        <a href="{{ route('transactions.month', [$beforeMonthObj->format('Y'), (int)$beforeMonthObj->format('m')]) }}" class="btn btn-sm btn-outline-secondary">
           <i class="fa fa-chevron-left"></i> {{ $beforeMonthObj->format('M/Y') }}
         </a>
         <strong class="align-self-center">
           @php $meses = [1=>'Janeiro',2=>'Fevereiro',3=>'Março',4=>'Abril',5=>'Maio',6=>'Junho',7=>'Julho',8=>'Agosto',9=>'Setembro',10=>'Outubro',11=>'Novembro',12=>'Dezembro']; @endphp
           {{ $meses[$month] ?? $month }} / {{ $year }}
         </strong>
-        <a href="{{ route('transactions.search', array_filter(['y' => $nextMonthObj->format('Y'), 'm' => (int)$nextMonthObj->format('m')])) }}" class="btn btn-sm btn-outline-secondary">
+        <a href="{{ route('transactions.month', [$nextMonthObj->format('Y'), (int)$nextMonthObj->format('m')]) }}" class="btn btn-sm btn-outline-secondary">
           {{ $nextMonthObj->format('M/Y') }} <i class="fa fa-chevron-right"></i>
         </a>
       </div>
