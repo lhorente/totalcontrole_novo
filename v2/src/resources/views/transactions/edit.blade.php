@@ -109,6 +109,16 @@
                 </div>
               </div>
 
+              {{-- Data de recebimento (apenas empréstimo) --}}
+              <div class="form-group" id="field-data-recebimento" style="{{ old('tipo', $transaction->tipo) !== 'emprestimo' ? 'display:none' : '' }}">
+                <label for="data_recebimento">Data de recebimento</label>
+                <input type="date" id="data_recebimento" name="data_recebimento"
+                       class="form-control @error('data_recebimento') is-invalid @enderror"
+                       value="{{ old('data_recebimento', $transaction->data_recebimento ? \Carbon\Carbon::parse($transaction->data_recebimento)->format('Y-m-d') : '') }}" />
+                <small class="text-muted">Data em que o valor foi devolvido. Deixe em branco se ainda está pendente.</small>
+                @error('data_recebimento')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+
               {{-- Categoria --}}
               <div class="form-group">
                 <label for="id_categoria">Categoria</label>
@@ -215,4 +225,17 @@
 
   </div>{{-- /.container --}}
 </div>{{-- /.content --}}
+
+<script>
+(function () {
+  var tipoSelect = document.getElementById('tipo');
+  var fieldRecebimento = document.getElementById('field-data-recebimento');
+
+  function toggleRecebimento() {
+    fieldRecebimento.style.display = tipoSelect.value === 'emprestimo' ? '' : 'none';
+  }
+
+  tipoSelect.addEventListener('change', toggleRecebimento);
+})();
+</script>
 @endsection

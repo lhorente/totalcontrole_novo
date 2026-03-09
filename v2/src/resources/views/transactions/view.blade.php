@@ -82,18 +82,66 @@
                     <i class="fa fa-check-circle"></i>
                     Pago em {{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m/Y') }}
                   </span>
+                  <form method="POST" action="{{ route('transactions.quickUpdate', $transaction->id) }}" class="d-inline ml-2">
+                    @csrf
+                    <input type="hidden" name="field" value="data_pagamento">
+                    <input type="hidden" name="value" value="">
+                    <button type="submit" class="btn btn-xs btn-outline-secondary" title="Limpar data de pagamento"
+                            onclick="return confirm('Remover data de pagamento?')">
+                      <i class="fa fa-times fa-xs"></i>
+                    </button>
+                  </form>
                 @else
                   <span class="text-danger"><i class="fa fa-clock"></i> Pendente</span>
+                  <form method="POST" action="{{ route('transactions.quickUpdate', $transaction->id) }}" class="d-inline ml-2" id="form-pagamento">
+                    @csrf
+                    <input type="hidden" name="field" value="data_pagamento">
+                    <div class="input-group input-group-sm d-inline-flex" style="width:auto;vertical-align:middle">
+                      <input type="date" name="value" class="form-control form-control-sm"
+                             value="{{ date('Y-m-d') }}" style="width:140px">
+                      <div class="input-group-append">
+                        <button type="submit" class="btn btn-sm btn-success">
+                          <i class="fa fa-check fa-xs"></i> Confirmar
+                        </button>
+                      </div>
+                    </div>
+                  </form>
                 @endif
               </dd>
 
-              @if ($transaction->data_recebimento)
+              @if ($transaction->tipo === 'emprestimo')
               <dt class="col-sm-4">Recebimento</dt>
               <dd class="col-sm-8">
-                <span class="text-success">
-                  <i class="fa fa-check-circle"></i>
-                  {{ \Carbon\Carbon::parse($transaction->data_recebimento)->format('d/m/Y') }}
-                </span>
+                @if ($transaction->data_recebimento)
+                  <span class="text-success">
+                    <i class="fa fa-check-circle"></i>
+                    {{ \Carbon\Carbon::parse($transaction->data_recebimento)->format('d/m/Y') }}
+                  </span>
+                  <form method="POST" action="{{ route('transactions.quickUpdate', $transaction->id) }}" class="d-inline ml-2">
+                    @csrf
+                    <input type="hidden" name="field" value="data_recebimento">
+                    <input type="hidden" name="value" value="">
+                    <button type="submit" class="btn btn-xs btn-outline-secondary" title="Limpar data de recebimento"
+                            onclick="return confirm('Remover data de recebimento?')">
+                      <i class="fa fa-times fa-xs"></i>
+                    </button>
+                  </form>
+                @else
+                  <span class="text-warning"><i class="fa fa-clock"></i> Pendente</span>
+                  <form method="POST" action="{{ route('transactions.quickUpdate', $transaction->id) }}" class="d-inline ml-2" id="form-recebimento">
+                    @csrf
+                    <input type="hidden" name="field" value="data_recebimento">
+                    <div class="input-group input-group-sm d-inline-flex" style="width:auto;vertical-align:middle">
+                      <input type="date" name="value" class="form-control form-control-sm"
+                             value="{{ date('Y-m-d') }}" style="width:140px">
+                      <div class="input-group-append">
+                        <button type="submit" class="btn btn-sm btn-success">
+                          <i class="fa fa-check fa-xs"></i> Confirmar
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                @endif
               </dd>
               @endif
 

@@ -361,19 +361,45 @@ class TransactionsController extends Controller
       'id_caixa'       => 'nullable|integer',
       'id_cartao'      => 'nullable|integer',
       'id_cliente'     => 'nullable|integer',
-      'data_pagamento' => 'nullable|date',
+      'data_pagamento'    => 'nullable|date',
+      'data_recebimento' => 'nullable|date',
     ]);
 
-    $transaction->descricao      = $request->input('descricao');
-    $transaction->valor          = $request->input('valor');
-    $transaction->data           = $request->input('data');
-    $transaction->tipo           = $request->input('tipo');
-    $transaction->id_categoria   = $request->input('id_categoria') ?: null;
-    $transaction->id_caixa       = $request->input('id_caixa') ?: null;
-    $transaction->id_cartao      = $request->input('id_cartao') ?: null;
-    $transaction->id_cliente     = $request->input('id_cliente') ?: null;
-    $transaction->data_pagamento = $request->input('data_pagamento') ?: null;
+    $transaction->descricao        = $request->input('descricao');
+    $transaction->valor            = $request->input('valor');
+    $transaction->data             = $request->input('data');
+    $transaction->tipo             = $request->input('tipo');
+    $transaction->id_categoria     = $request->input('id_categoria') ?: null;
+    $transaction->id_caixa         = $request->input('id_caixa') ?: null;
+    $transaction->id_cartao        = $request->input('id_cartao') ?: null;
+    $transaction->id_cliente       = $request->input('id_cliente') ?: null;
+    $transaction->data_pagamento   = $request->input('data_pagamento') ?: null;
+    $transaction->data_recebimento = $request->input('tipo') === 'emprestimo'
+      ? ($request->input('data_recebimento') ?: null)
+      : null;
 
+    $transaction->save();
+
+    return redirect()
+      ->route('transactions.view', $id)
+      ->with('success', 'Lançamento atualizado com sucesso.');
+  }
+
+  public function quickUpdate(Request $request, $id){
+    $transaction = Transaction::findOrFail($id);
+
+    $field = $request->input('field');
+    $allowed = ['data_pagamento', 'data_recebimento'];
+
+    if (!in_array($field, $allowed)) {
+      abort(422, 'Campo não permitido.');
+    }
+
+    $request->validate([
+      'value' => 'nullable|date',
+    ]);
+
+    $transaction->$field = $request->input('value') ?: null;
     $transaction->save();
 
     return redirect()
