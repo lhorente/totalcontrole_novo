@@ -259,13 +259,14 @@
             </div>
           </div>
           <div class="card-body p-0">
+            <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
               <thead>
                 <tr>
                   <th>Pessoa</th>
                   <th class="text-right" style="width:140px">Total</th>
-                  <th class="text-right" style="width:140px">Pendente</th>
-                  <th class="text-right" style="width:140px">Recebido</th>
+                  <th class="text-right d-none d-sm-table-cell" style="width:140px">Pendente</th>
+                  <th class="text-right d-none d-sm-table-cell" style="width:140px">Recebido</th>
                   <th style="width:90px"></th>
                 </tr>
               </thead>
@@ -281,12 +282,17 @@
                   <td>
                     <i class="fa fa-user fa-xs text-muted mr-1"></i>
                     {{ $pessoaNome }}
+                    <div class="d-sm-none" style="font-size:.8em">
+                      @if ($pessoaPend > 0)
+                        <span class="text-warning"><i class="fa fa-clock fa-xs"></i> Pend: R$ {{ number_format($pessoaPend, 2, ',', '.') }}</span>
+                      @endif
+                    </div>
                   </td>
-                  <td class="text-right">R$ {{ number_format($pessoaTotal, 2, ',', '.') }}</td>
-                  <td class="text-right {{ $pessoaPend > 0 ? 'text-warning font-weight-bold' : 'text-muted' }}">
+                  <td class="text-right text-nowrap">R$ {{ number_format($pessoaTotal, 2, ',', '.') }}</td>
+                  <td class="text-right d-none d-sm-table-cell text-nowrap {{ $pessoaPend > 0 ? 'text-warning font-weight-bold' : 'text-muted' }}">
                     R$ {{ number_format($pessoaPend, 2, ',', '.') }}
                   </td>
-                  <td class="text-right text-success">
+                  <td class="text-right d-none d-sm-table-cell text-nowrap text-success">
                     R$ {{ number_format($pessoaReceb, 2, ',', '.') }}
                   </td>
                   <td class="text-right">
@@ -301,17 +307,18 @@
               <tfoot class="font-weight-bold">
                 <tr class="bg-light">
                   <td>Total</td>
-                  <td class="text-right">R$ {{ number_format($emprestimosTotal, 2, ',', '.') }}</td>
-                  <td class="text-right {{ $emprestimosPendentes > 0 ? 'text-warning' : '' }}">
+                  <td class="text-right text-nowrap">R$ {{ number_format($emprestimosTotal, 2, ',', '.') }}</td>
+                  <td class="text-right d-none d-sm-table-cell text-nowrap {{ $emprestimosPendentes > 0 ? 'text-warning' : '' }}">
                     R$ {{ number_format($emprestimosPendentes, 2, ',', '.') }}
                   </td>
-                  <td class="text-right text-success">
+                  <td class="text-right d-none d-sm-table-cell text-nowrap text-success">
                     R$ {{ number_format($emprestimosRecebidos, 2, ',', '.') }}
                   </td>
                   <td></td>
                 </tr>
               </tfoot>
             </table>
+            </div>
           </div>
         </div>
       </div>
@@ -488,58 +495,80 @@
               <table class="table table-sm table-hover mb-0">
                 <thead>
                   <tr>
-                    <th style="width:100px">Data</th>
+                    <th class="d-none d-sm-table-cell" style="width:90px">Data</th>
                     <th>Descrição</th>
-                    <th style="width:120px">Categoria</th>
-                    <th style="width:90px">Tipo</th>
-                    <th style="width:120px">Cartão</th>
-                    <th style="width:120px">Pessoa</th>
-                    <th class="text-right" style="width:120px">Valor</th>
-                    <th style="width:110px">Pagamento</th>
+                    <th class="d-none d-md-table-cell" style="width:120px">Categoria</th>
+                    <th class="d-none d-md-table-cell" style="width:90px">Tipo</th>
+                    <th class="d-none d-md-table-cell" style="width:120px">Cartão</th>
+                    <th class="d-none d-md-table-cell" style="width:120px">Pessoa</th>
+                    <th class="text-right" style="width:100px">Valor</th>
+                    <th class="text-right d-none d-sm-table-cell" style="width:110px">Pagamento</th>
                   </tr>
                 </thead>
                 <tbody>
                   @foreach ($transactions as $transaction)
-                  <tr class=""
-                      style="cursor:pointer"
+                  @php
+                    $tipoLabels = ['despesa'=>'Despesa','receita'=>'Receita','transferencia'=>'Transferência','emprestimo'=>'Empréstimo'];
+                    $tipoBadge  = ['despesa'=>'danger','receita'=>'success','transferencia'=>'secondary','emprestimo'=>'warning'];
+                  @endphp
+                  <tr style="cursor:pointer"
                       onclick="window.location='/transactions/view/{{ $transaction->id }}'">
-                    <td>{{ $transaction->data->format('d/m/Y') }}</td>
+                    <td class="text-nowrap d-none d-sm-table-cell">{{ $transaction->data->format('d/m/Y') }}</td>
                     <td>
                       @if ($transaction->category)
                         <i class="{{ $transaction->category->icon_class }} text-muted mr-1" style="font-size:.8em"></i>
                       @endif
                       {{ $transaction->descricao ?: $transaction->descricao_banco }}
+                      {{-- Mobile-only secondary info --}}
+                      <div class="d-sm-none mt-1" style="font-size:.78em; line-height:1.6">
+                        @if ($transaction->tipo)
+                          <span class="badge badge-{{ $tipoBadge[$transaction->tipo] ?? 'light' }} mr-1">
+                            {{ $tipoLabels[$transaction->tipo] ?? ucfirst($transaction->tipo) }}
+                          </span>
+                        @endif
+                        @if ($transaction->category)
+                          <span class="text-muted"><i class="fa fa-tag fa-xs"></i> {{ $transaction->category->nome }}</span>
+                        @endif
+                        @if ($transaction->credit_card)
+                          <span class="text-muted ml-1"><i class="fa fa-credit-card fa-xs"></i> {{ $transaction->credit_card->descricao }}</span>
+                        @endif
+                        @if ($transaction->contact)
+                          <span class="text-muted ml-1"><i class="fa fa-user fa-xs"></i> {{ $transaction->contact->nome }}</span>
+                        @endif
+                        <br>
+                        @if ($transaction->data_pagamento)
+                          <span class="text-success"><i class="fa fa-check"></i> Pago {{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m') }}</span>
+                        @else
+                          <span class="text-danger"><i class="fa fa-clock"></i> Pendente</span>
+                        @endif
+                      </div>
                     </td>
-                    <td>{{ $transaction->category->nome ?? '—' }}</td>
-                    <td>
-                      @php
-                        $tipoLabels = ['despesa'=>'Despesa','receita'=>'Receita','transferencia'=>'Transferência','emprestimo'=>'Empréstimo'];
-                        $tipoBadge  = ['despesa'=>'danger','receita'=>'success','transferencia'=>'secondary','emprestimo'=>'warning'];
-                      @endphp
+                    <td class="d-none d-md-table-cell">{{ $transaction->category->nome ?? '—' }}</td>
+                    <td class="d-none d-md-table-cell">
                       @if ($transaction->tipo)
                         <span class="badge badge-{{ $tipoBadge[$transaction->tipo] ?? 'light' }}">
                           {{ $tipoLabels[$transaction->tipo] ?? ucfirst($transaction->tipo) }}
                         </span>
                       @endif
                     </td>
-                    <td>
+                    <td class="d-none d-md-table-cell">
                       @if ($transaction->credit_card)
                         <span><i class="fa fa-credit-card fa-xs text-muted"></i> {{ $transaction->credit_card->descricao }}</span>
                       @else
                         —
                       @endif
                     </td>
-                    <td>
+                    <td class="d-none d-md-table-cell">
                       @if ($transaction->contact)
                         <i class="fa fa-user fa-xs text-muted"></i> {{ $transaction->contact->nome }}
                       @else
                         —
                       @endif
                     </td>
-                    <td class="text-right font-weight-bold">
+                    <td class="text-right font-weight-bold text-nowrap">
                       R$ {{ number_format($transaction->valor, 2, ',', '.') }}
                     </td>
-                    <td>
+                    <td class="text-right d-none d-sm-table-cell text-nowrap">
                       @if ($transaction->data_pagamento)
                         <span class="text-success"><i class="fa fa-check"></i> {{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m/Y') }}</span>
                       @else
