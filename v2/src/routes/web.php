@@ -25,7 +25,7 @@ Route::get('/', function () {
 
 // Módulo Básico: Padrão em todas as contas
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
-  Route::get('/dashboard',[DashboardController::class, 'index']);
+  Route::get('/',[DashboardController::class, 'index']);
 
   Route::get('/contacts',[ContactsController::class, 'index']);
   Route::get('/contacts/new',[ContactsController::class, 'new']);
