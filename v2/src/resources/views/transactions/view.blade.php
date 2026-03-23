@@ -3,8 +3,8 @@
 @section('content')
 
 @php
-  $tipoLabels = ['despesa'=>'Despesa','receita'=>'Receita','transferencia'=>'Transferência','emprestimo'=>'Empréstimo'];
-  $tipoBadge  = ['despesa'=>'danger','receita'=>'success','transferencia'=>'secondary','emprestimo'=>'warning'];
+  $tipoLabels = ['despesa'=>'Despesa','receita'=>'Receita','transferencia'=>'Transferência','investimento'=>'Investimento','emprestimo'=>'Empréstimo','pagamento_emprestimo'=>'Pgto. Empréstimo'];
+  $tipoBadge  = ['despesa'=>'danger','receita'=>'success','transferencia'=>'secondary','investimento'=>'info','emprestimo'=>'warning','pagamento_emprestimo'=>'primary'];
   $isPago = (bool) $transaction->data_pagamento;
 @endphp
 

@@ -3,7 +3,7 @@
 @section('content')
 
 @php
-  $tipoLabels = ['despesa'=>'Despesa','receita'=>'Receita','transferencia'=>'Transferência','emprestimo'=>'Empréstimo'];
+  $tipoLabels = ['despesa'=>'Despesa','lucro'=>'Receita','transferencia'=>'Transferência','investimento'=>'Investimento','emprestimo'=>'Empréstimo','pagamento_emprestimo'=>'Pgto. Empréstimo'];
 @endphp
 
 <div class="content-header">

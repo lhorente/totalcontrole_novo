@@ -298,7 +298,7 @@ class TransactionsController extends Controller
       'descricao'      => 'nullable|string|max:255',
       'valor'          => 'required|numeric|min:0',
       'data'           => 'required|date',
-      'tipo'           => 'required|in:despesa,receita,transferencia,emprestimo',
+      'tipo'           => 'required|in:despesa,lucro,transferencia,investimento,emprestimo,pagamento_emprestimo',
       'id_categoria'   => 'nullable|integer',
       'id_caixa'       => 'nullable|integer',
       'id_cartao'      => 'nullable|integer',
@@ -356,7 +356,7 @@ class TransactionsController extends Controller
       'descricao'      => 'nullable|string|max:255',
       'valor'          => 'required|numeric|min:0',
       'data'           => 'required|date',
-      'tipo'           => 'required|in:despesa,receita,transferencia,emprestimo',
+      'tipo'           => 'required|in:despesa,lucro,transferencia,investimento,emprestimo,pagamento_emprestimo',
       'id_categoria'   => 'nullable|integer',
       'id_caixa'       => 'nullable|integer',
       'id_cartao'      => 'nullable|integer',
@@ -374,7 +374,7 @@ class TransactionsController extends Controller
     $transaction->id_cartao        = $request->input('id_cartao') ?: null;
     $transaction->id_cliente       = $request->input('id_cliente') ?: null;
     $transaction->data_pagamento   = $request->input('data_pagamento') ?: null;
-    $transaction->data_recebimento = $request->input('tipo') === 'emprestimo'
+    $transaction->data_recebimento = in_array($request->input('tipo'), ['emprestimo', 'pagamento_emprestimo'])
       ? ($request->input('data_recebimento') ?: null)
       : null;
 

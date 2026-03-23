@@ -73,9 +73,10 @@
                     <select class="form-control" name="t">
                       <option value="">Todos</option>
                       <option value="despesa"      @selected($type === 'despesa')>Despesa</option>
-                      <option value="receita"      @selected($type === 'receita')>Receita</option>
+                      <option value="lucro"      @selected($type === 'lucro')>Receita</option>
                       <option value="transferencia" @selected($type === 'transferencia')>Transferência</option>
                       <option value="emprestimo"   @selected($type === 'emprestimo')>Empréstimo</option>
+                      <option value="pagamento_emprestimo"   @selected($type === 'pagamento_emprestimo')>Pgto. Empréstimo</option>
                     </select>
                   </div>
                 </div>
@@ -245,10 +246,13 @@
       {{-- Lending summary --}}
       @php
         $emprestimos = $transactions->where('tipo', 'emprestimo');
+        $emprestimos_recebidos = $transactions->where('tipo', 'pagamento_emprestimo');
         $emprestimosTotal   = $emprestimos->sum('valor');
-        $emprestimosPendentes = $emprestimos->filter(fn($t) => !$t->data_recebimento)->sum('valor');
-        $emprestimosRecebidos = $emprestimos->filter(fn($t) => $t->data_recebimento)->sum('valor');
+        $emprestimosRecebidosTotal = $emprestimos_recebidos->sum('valor');
+        $emprestimosPendentes = $emprestimosTotal - $emprestimosRecebidosTotal;
+        $emprestimosRecebidos = $emprestimosRecebidosTotal;
         $emprestimosPorPessoa = $emprestimos->groupBy('id_cliente');
+        $pagamentosPorPessoa  = $emprestimos_recebidos->groupBy('id_cliente');
       @endphp
       @if ($emprestimos->count() > 0)
       <div class="col-md-12">
@@ -261,10 +265,10 @@
             </h3>
             <div class="card-tools">
               <span class="mr-3 text-sm">
-                <span class="text-warning font-weight-bold">
-                  R$ {{ number_format($emprestimosPendentes, 2, ',', '.') }}
+                <span class="font-weight-bold">
+                  R$ {{ number_format($emprestimosRecebidosTotal, 2, ',', '.') }}
                 </span>
-                <span class="text-muted"> pendente</span>
+                <span class="text-muted"> recebido</span>
                 &nbsp;/&nbsp;
                 <span class="font-weight-bold">R$ {{ number_format($emprestimosTotal, 2, ',', '.') }}</span>
                 <span class="text-muted"> total</span>
@@ -291,8 +295,8 @@
                 @php
                   $pessoaNome   = optional($group->first()->contact)->nome ?? 'Sem pessoa';
                   $pessoaTotal  = $group->sum('valor');
-                  $pessoaPend   = $group->filter(fn($t) => !$t->data_recebimento)->sum('valor');
-                  $pessoaReceb  = $group->filter(fn($t) => $t->data_recebimento)->sum('valor');
+                  $pessoaReceb  = isset($pagamentosPorPessoa[$idCliente]) ? $pagamentosPorPessoa[$idCliente]->sum('valor') : 0;
+                  $pessoaPend   = $pessoaTotal - $pessoaReceb;
                 @endphp
                 <tr>
                   <td>
@@ -308,13 +312,21 @@
                   <td class="text-right d-none d-sm-table-cell text-nowrap {{ $pessoaPend > 0 ? 'text-warning font-weight-bold' : 'text-muted' }}">
                     R$ {{ number_format($pessoaPend, 2, ',', '.') }}
                   </td>
-                  <td class="text-right d-none d-sm-table-cell text-nowrap text-success">
-                    R$ {{ number_format($pessoaReceb, 2, ',', '.') }}
+                  <td class="text-right d-none d-sm-table-cell text-nowrap {{ $pessoaReceb > 0 ? 'text-success' : 'text-muted' }}">
+                    @if ($pessoaReceb > 0)
+                      R$ {{ number_format($pessoaReceb, 2, ',', '.') }}
+                    @else
+                      —
+                    @endif
                   </td>
                   <td class="text-right">
-                    <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['t','categoria','cartao','caixa'])), ['pessoa' => $idCliente])) }}"
-                       class="btn btn-xs btn-outline-secondary" title="Ver lançamentos desta pessoa">
+                    <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['categoria','cartao','caixa'])), ['t' => 'emprestimo', 'pessoa' => $idCliente])) }}"
+                       class="btn btn-xs btn-outline-secondary" title="Ver empréstimos desta pessoa">
                       <i class="fa fa-search fa-xs"></i>
+                    </a>
+                    <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['categoria','cartao','caixa'])), ['t' => 'pagamento_emprestimo', 'pessoa' => $idCliente])) }}"
+                       class="btn btn-xs btn-outline-success ml-1" title="Ver pagamentos desta pessoa">
+                      <i class="fa fa-money-bill-wave fa-xs"></i>
                     </a>
                   </td>
                 </tr>
@@ -508,8 +520,8 @@
                 <tbody>
                   @foreach ($transactions as $transaction)
                   @php
-                    $tipoLabels = ['despesa'=>'Despesa','receita'=>'Receita','transferencia'=>'Transferência','emprestimo'=>'Empréstimo'];
-                    $tipoBadge  = ['despesa'=>'danger','receita'=>'success','transferencia'=>'secondary','emprestimo'=>'warning'];
+                    $tipoLabels = ['despesa'=>'Despesa','lucro'=>'Receita','transferencia'=>'Transferência','emprestimo'=>'Empréstimo','pagamento_emprestimo'=>'Pgto. Empréstimo'];
+                    $tipoBadge  = ['despesa'=>'danger','lucro'=>'success','transferencia'=>'secondary','emprestimo'=>'warning','pagamento_emprestimo'=>'success'];
                   @endphp
                   <tr style="cursor:pointer"
                       onclick="window.location='/transactions/view/{{ $transaction->id }}'">

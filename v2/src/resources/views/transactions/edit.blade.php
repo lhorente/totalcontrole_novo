@@ -3,7 +3,7 @@
 @section('content')
 
 @php
-  $tipoLabels = ['despesa'=>'Despesa','receita'=>'Receita','transferencia'=>'Transferência','emprestimo'=>'Empréstimo'];
+  $tipoLabels = ['despesa'=>'Despesa','lucro'=>'Receita','transferencia'=>'Transferência','investimento'=>'Investimento','emprestimo'=>'Empréstimo','pagamento_emprestimo'=>'Pgto. Empréstimo'];
 @endphp
 
 <div class="content-header">
@@ -110,7 +110,7 @@
               </div>
 
               {{-- Data de recebimento (apenas empréstimo) --}}
-              <div class="form-group" id="field-data-recebimento" style="{{ old('tipo', $transaction->tipo) !== 'emprestimo' ? 'display:none' : '' }}">
+              <div class="form-group" id="field-data-recebimento" style="{{ !in_array(old('tipo', $transaction->tipo), ['emprestimo', 'pagamento_emprestimo']) ? 'display:none' : '' }}">
                 <label for="data_recebimento">Data de recebimento</label>
                 <input type="date" id="data_recebimento" name="data_recebimento"
                        class="form-control @error('data_recebimento') is-invalid @enderror"
@@ -232,7 +232,8 @@
   var fieldRecebimento = document.getElementById('field-data-recebimento');
 
   function toggleRecebimento() {
-    fieldRecebimento.style.display = tipoSelect.value === 'emprestimo' ? '' : 'none';
+    var t = tipoSelect.value;
+    fieldRecebimento.style.display = (t === 'emprestimo' || t === 'pagamento_emprestimo') ? '' : 'none';
   }
 
   tipoSelect.addEventListener('change', toggleRecebimento);
