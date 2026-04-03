@@ -106,8 +106,37 @@
                     </tr>
                   </thead>
                   <tbody>
-                    @foreach ($transactions as $index => $transaction)
-                    <tr class="{{ $transaction['is_duplicada'] ? 'table-warning' : ($transaction['is_duplicada_por_valor'] ? 'tr-valor-similar' : ($transaction['is_duplicada_por_valor_aproximado'] ? 'tr-valor-similar' : '')) }}">
+                    @php
+                      $sortedTransactions = $transactions->sortBy(function($t) {
+                        if ($t['is_duplicada'] ?? false) return 0;
+                        if ($t['is_duplicada_por_valor'] ?? false) return 1;
+                        if ($t['is_duplicada_por_valor_aproximado'] ?? false) return 2;
+                        return 3;
+                      })->values();
+                      $groups = [
+                        0 => ['label' => 'Chave duplicada (já existem no sistema)', 'class' => 'table-warning', 'icon' => 'fas fa-clone'],
+                        1 => ['label' => 'Mesmo valor já lançado neste mês', 'class' => 'tr-valor-similar', 'icon' => 'fas fa-search'],
+                        2 => ['label' => 'Valor aproximado já lançado neste mês', 'class' => 'tr-valor-aproximado', 'icon' => 'fas fa-balance-scale'],
+                        3 => ['label' => 'Novas transações', 'class' => '', 'icon' => 'fas fa-plus-circle'],
+                      ];
+                      $currentGroup = -1;
+                    @endphp
+                    @foreach ($sortedTransactions as $index => $transaction)
+                    @php
+                      $group = ($transaction['is_duplicada'] ?? false) ? 0
+                        : (($transaction['is_duplicada_por_valor'] ?? false) ? 1
+                        : (($transaction['is_duplicada_por_valor_aproximado'] ?? false) ? 2 : 3));
+                    @endphp
+                    @if($group !== $currentGroup)
+                      @php $currentGroup = $group; @endphp
+                      <tr>
+                        <td colspan="8" class="text-white font-weight-bold py-1 px-3"
+                            style="background-color: {{ $group === 0 ? '#b8860b' : ($group === 1 ? '#c0732a' : ($group === 2 ? '#2a72a8' : '#2d7a2d')) }}; font-size: 13px;">
+                          <i class="{{ $groups[$group]['icon'] }}"></i> {{ $groups[$group]['label'] }}
+                        </td>
+                      </tr>
+                    @endif
+                    <tr class="{{ $transaction['is_duplicada'] ? 'table-warning' : ($transaction['is_duplicada_por_valor'] ? 'tr-valor-similar' : ($transaction['is_duplicada_por_valor_aproximado'] ? 'tr-valor-aproximado' : '')) }}">
                       <td class="text-center">
                         <input type="checkbox" 
                                class="import-checkbox" 
