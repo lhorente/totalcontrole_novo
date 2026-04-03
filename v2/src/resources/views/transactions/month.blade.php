@@ -461,11 +461,27 @@
                   <td><i class="fa fa-credit-card fa-xs text-muted mr-1"></i> {{ $cardDesc }}</td>
                   <td class="text-center text-muted">{{ $group->count() }}</td>
                   <td class="text-right font-weight-bold">R$ {{ number_format($cardTotal, 2, ',', '.') }}</td>
-                  <td class="text-right">
+                  <td class="text-right text-nowrap">
                     <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['t','categoria','pessoa','caixa'])), ['cartao' => $idCard])) }}"
                        class="btn btn-xs btn-outline-secondary" title="Filtrar por cartão">
                       <i class="fa fa-search fa-xs"></i>
                     </a>
+                    @php $pendingCount = $group->whereNull('data_pagamento')->count(); @endphp
+                    @if ($pendingCount > 0)
+                    <form method="POST"
+                          action="{{ route('transactions.payCardBill', [$idCard, $year, $month]) }}"
+                          class="d-inline"
+                          onsubmit="return confirm('Confirmar pagamento da fatura do cartão {{ addslashes($cardDesc) }}? {{ $pendingCount }} lançamento(s) pendente(s) serão marcados como pagos hoje.')">
+                      @csrf
+                      <button type="submit" class="btn btn-xs btn-success ml-1" title="Confirmar pagamento da fatura">
+                        <i class="fa fa-check fa-xs"></i> Pagar fatura
+                      </button>
+                    </form>
+                    @else
+                    <span class="btn btn-xs btn-outline-success ml-1 disabled" title="Fatura já paga">
+                      <i class="fa fa-check-double fa-xs"></i>
+                    </span>
+                    @endif
                   </td>
                 </tr>
                 @endforeach

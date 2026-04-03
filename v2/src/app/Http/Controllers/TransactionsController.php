@@ -17,6 +17,18 @@ use Carbon\Carbon;
 
 class TransactionsController extends Controller
 {
+  public function payCardBill(Request $request, $cardId, $year, $month)
+  {
+    $updated = Transaction::where('id_usuario', Auth::id())
+      ->where('id_cartao', $cardId)
+      ->whereYear('data', $year)
+      ->whereMonth('data', $month)
+      ->whereNull('data_pagamento')
+      ->update(['data_pagamento' => Carbon::today()]);
+
+    return redirect()->back()->with('success', "Fatura confirmada: {$updated} lançamento(s) marcado(s) como pago(s).");
+  }
+
   public function index(Request $request){
     $month = $request->input('m',date('m'));
     $year = $request->input('y',date('Y'));
@@ -391,7 +403,8 @@ class TransactionsController extends Controller
 
     return redirect()
       ->route('transactions.month')
-      ->with('success', 'Lançamento #'.$id.' excluído com sucesso.');
+      ->with('success', 'Lançamento #'.$id.' excluído
+       com sucesso.');
   }
 
   public function quickUpdate(Request $request, $id){
