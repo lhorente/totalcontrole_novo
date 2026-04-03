@@ -452,11 +452,12 @@ class TransactionsController extends Controller
     $dataFaturaCarbon = Carbon::parse($dataFatura);
 
     // Verifica duplicatas para cada transação
-    $transactions = $transactions->map(function($transaction) use ($dataFatura, $idCartao, $dataFaturaCarbon) {
+    $transactions = $transactions->map(function($transaction, $idx) use ($dataFatura, $idCartao, $dataFaturaCarbon) {
       $dataBanco = $transaction['data_banco'] ?? '';
       $descricao = $transaction['descricao_banco'] ?? '';
       $valor = $transaction['valor'] ?? 0;
-      $chaveBanco = md5($dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura);
+      //$chaveBanco = md5($dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura);
+      $chaveBanco = $dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura;
       
       // Verifica se já existe pela chave_banco
       $isDuplicada = Transaction::where('chave_banco', $chaveBanco)
@@ -493,6 +494,7 @@ class TransactionsController extends Controller
           ? ($transacaoSimilarAproximada->descricao ?: $transacaoSimilarAproximada->descricao_banco)
           : null;
       $transaction['chave_banco'] = $chaveBanco;
+      $transaction['_key'] = $idx;
       
       return $transaction;
     });
@@ -504,12 +506,94 @@ class TransactionsController extends Controller
                           ->get();
     $pessoas = Contact::where('id_usuario', Auth::id())->get();
 
+    // --- Installment suggestions ---
+    // Group future installments by source transaction index.
+    $installmentGroups = [];
+    foreach ($transactions as $index => $transaction) {
+      $inst = $transaction['installment'] ?? null;
+      if (!$inst || $inst['current'] >= $inst['total']) {
+        continue;
+      }
+
+      $futures = [];
+      $remaining = $inst['total'] - $inst['current'];
+      for ($i = 1; $i <= $remaining; $i++) {
+        $futureParcel = $inst['current'] + $i;
+        $futureDesc   = preg_replace(
+          '/\b' . preg_quote($inst['current'], '/') . '\/' . preg_quote($inst['total'], '/') . '\b/',
+          $futureParcel . '/' . $inst['total'],
+          $transaction['descricao_banco']
+        );
+        $futureDate   = Carbon::parse($dataFatura)->addMonths($i);
+        $futureVal    = $transaction['valor'];
+
+        // Chave futura (sem data_banco pois é gerada, não vem do CSV)
+        $futureChave = '' . '|' . $futureDesc . '|' . $futureVal . '|' . $futureDate->format('Y-m-d');
+
+        $futureDupChave = Transaction::where('chave_banco', $futureChave)
+                                     ->where('id_usuario', Auth::id())
+                                     ->exists();
+
+        $futureValArredondado = round($futureVal, 2);
+        $futureSimilar = !$futureDupChave
+          ? Transaction::where('id_usuario', Auth::id())
+              ->where('id_cartao', $idCartao)
+              ->whereRaw('ROUND(valor, 2) = ?', [$futureValArredondado])
+              ->whereYear('data', $futureDate->year)
+              ->whereMonth('data', $futureDate->month)
+              ->first()
+          : null;
+        $futureDupValor = $futureSimilar !== null;
+
+        $futureValInteiro = (int) floor(abs($futureVal));
+        $futureSimilarAprox = (!$futureDupChave && !$futureDupValor)
+          ? Transaction::where('id_usuario', Auth::id())
+              ->where('id_cartao', $idCartao)
+              ->whereRaw('FLOOR(ABS(valor)) = ?', [$futureValInteiro])
+              ->whereYear('data', $futureDate->year)
+              ->whereMonth('data', $futureDate->month)
+              ->first()
+          : null;
+        $futureDupValorAprox = $futureSimilarAprox !== null;
+
+        $futures[] = [
+          'parcel'          => $futureParcel,
+          'total'           => $inst['total'],
+          'descricao_banco' => $futureDesc,
+          'descricao'       => $futureDesc,
+          'valor'           => $futureVal,
+          'data'            => $futureDate->format('Y-m-d'),
+          'id_cartao'       => $idCartao,
+          // Duplicate flags
+          'is_duplicada'                           => $futureDupChave,
+          'is_duplicada_por_valor'                 => $futureDupValor,
+          'duplicada_por_valor_descricao'          => $futureDupValor
+              ? ($futureSimilar->descricao ?: $futureSimilar->descricao_banco)
+              : null,
+          'is_duplicada_por_valor_aproximado'      => $futureDupValorAprox,
+          'duplicada_por_valor_aproximado_descricao' => $futureDupValorAprox
+              ? ($futureSimilarAprox->descricao ?: $futureSimilarAprox->descricao_banco)
+              : null,
+        ];
+      }
+
+      $installmentGroups[$index] = [
+        'source_desc'  => $transaction['descricao_banco'],
+        'source_index' => $index,
+        'valor'        => $transaction['valor'],
+        'current'      => $inst['current'],
+        'total'        => $inst['total'],
+        'futures'      => $futures,
+      ];
+    }
+
     return view('transactions/importPreview', [
-      'transactions' => $transactions,
-      'id_cartao' => $request->input('id_cartao'),
-      'data_fatura' => $request->input('data_fatura'),
-      'categorias' => $categorias,
-      'pessoas' => $pessoas,
+      'transactions'      => $transactions,
+      'id_cartao'         => $request->input('id_cartao'),
+      'data_fatura'       => $request->input('data_fatura'),
+      'categorias'        => $categorias,
+      'pessoas'           => $pessoas,
+      'installmentGroups' => $installmentGroups,
     ]);
   }
 
@@ -517,8 +601,10 @@ class TransactionsController extends Controller
   {
     $transacoes = $request->input('transacoes', []);
     $dataFatura = $request->input('data_fatura');
+    $parcelasFuturas = $request->input('parcelas_futuras', []);
     $count = 0;
     $duplicadas = 0;
+    $parcelasCount = 0;
 
     // Busca a caixa padrão do usuário (exibir_no_saldo = 1)
     $caixaPadrao = Wallet::where('id_usuario', Auth::id())
@@ -527,7 +613,7 @@ class TransactionsController extends Controller
     
     $idCaixa = $caixaPadrao ? $caixaPadrao->id : null;
 
-    DB::transaction(function () use ($transacoes, $dataFatura, $idCaixa, &$count, &$duplicadas) {
+    DB::transaction(function () use ($transacoes, $dataFatura, $idCaixa, $parcelasFuturas, &$count, &$duplicadas, &$parcelasCount) {
       foreach ($transacoes as $item) {
         // Importa apenas se o checkbox estiver marcado
         if (!isset($item['importar']) || $item['importar'] != '1') {
@@ -542,7 +628,7 @@ class TransactionsController extends Controller
           $dataBanco = $item['data_banco'] ?? '';
           $descricao = $item['descricao_banco'] ?? '';
           $valor = $item['valor'] ?? 0;
-          $chaveBanco = md5($dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura);
+          $chaveBanco = $dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura;
         }
 
         // Verifica se já existe uma transação com essa chave
@@ -570,9 +656,33 @@ class TransactionsController extends Controller
         ]);
         $count++;
       }
+
+      // Cria parcelas futuras marcadas pelo usuário
+      foreach ($parcelasFuturas as $pf) {
+        if (!isset($pf['criar']) || $pf['criar'] != '1') {
+          continue;
+        }
+
+        Transaction::create([
+          'id_categoria'    => $pf['id_categoria'] ?: null,
+          'descricao_banco' => $pf['descricao_banco'] ?? '',
+          'descricao'       => $pf['descricao'] ?? '',
+          'valor'           => $pf['valor'] ?? 0,
+          'data'            => $pf['data'] ?? now(),
+          'id_cartao'       => $pf['id_cartao'] ?? null,
+          'id_caixa'        => $idCaixa,
+          'tipo'            => $pf['tipo'] ?? 'despesa',
+          'id_cliente'      => null,
+          'id_usuario'      => Auth::id(),
+        ]);
+        $parcelasCount++;
+      }
     });
 
     $mensagem = "{$count} transações importadas com sucesso.";
+    if ($parcelasCount > 0) {
+      $mensagem .= " {$parcelasCount} parcela(s) futura(s) criada(s).";
+    }
     if ($duplicadas > 0) {
       $mensagem .= " {$duplicadas} transações duplicadas foram ignoradas.";
     }

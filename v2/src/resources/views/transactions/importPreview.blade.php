@@ -156,6 +156,13 @@
                                value="{{ $transaction['descricao_banco'] }}" 
                                readonly>
 
+                          @if($transaction['installment'] ?? null)
+                            @php $inst = $transaction['installment']; @endphp
+                            <span class="badge badge-info mt-1">
+                              Parcela {{ $inst['current'] }}/{{ $inst['total'] }}
+                            </span>
+                          @endif
+
                           @if($transaction['is_duplicada'])
                             <span class="">Já existe no sistema (chave duplicada)</span>
                           @elseif($transaction['is_duplicada_por_valor'])
@@ -185,6 +192,7 @@
                         <select class="form-control form-control-sm categoria-select" 
                                 name="transacoes[{{ $loop->index }}][id_categoria]"
                                 data-index="{{ $loop->index }}"
+                                data-key="{{ $transaction['_key'] ?? $loop->index }}"
                                 {{ $transaction['is_duplicada'] ? '' : 'required' }}>
                           <option value="">Selecione</option>
                           @foreach ($categorias as $categoria)
@@ -196,7 +204,8 @@
                       <td>
                         <select class="form-control form-control-sm tipo-select" 
                                 name="transacoes[{{ $loop->index }}][tipo]" 
-                                data-index="{{ $loop->index }}" 
+                                data-index="{{ $loop->index }}"
+                                data-key="{{ $transaction['_key'] ?? $loop->index }}"
                                 {{ $transaction['is_duplicada'] ? '' : 'required' }}>
                           <option value="despesa" {{ $transaction['tipo_lancamento'] == 'despesa' ? 'selected' : '' }}>Despesa</option>
                           <option value="receita" {{ $transaction['tipo_lancamento'] == 'receita' ? 'selected' : '' }}>Receita</option>
@@ -235,6 +244,174 @@
               </a>
             </div>
           </div>
+
+          {{-- ============================================================ --}}
+          {{-- Seção de Parcelas Futuras                                     --}}
+          {{-- ============================================================ --}}
+          @if(!empty($installmentGroups))
+          <div class="card card-warning mt-4">
+            <div class="card-header">
+              <h3 class="card-title">
+                <i class="fas fa-layer-group"></i>
+                Parcelas Futuras Detectadas
+              </h3>
+              <div class="card-tools">
+                <span class="badge badge-light">
+                  {{ collect($installmentGroups)->sum(fn($g) => count($g['futures'])) }} parcela(s) futura(s) em
+                  {{ count($installmentGroups) }} série(s)
+                </span>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="alert alert-warning m-3 mb-0">
+                <i class="fas fa-info-circle"></i>
+                As parcelas abaixo foram detectadas automaticamente. Marque as que deseja criar nos meses seguintes.
+                A categoria e tipo serão copiados da transação original ao confirmar.
+              </div>
+
+              @php
+                $pf_total_dup       = collect($installmentGroups)->flatMap(fn($g) => $g['futures'])->filter(fn($f) => $f['is_duplicada'] ?? false)->count();
+                $pf_total_dupVal    = collect($installmentGroups)->flatMap(fn($g) => $g['futures'])->filter(fn($f) => $f['is_duplicada_por_valor'] ?? false)->count();
+                $pf_total_dupAprox  = collect($installmentGroups)->flatMap(fn($g) => $g['futures'])->filter(fn($f) => $f['is_duplicada_por_valor_aproximado'] ?? false)->count();
+              @endphp
+
+              @if($pf_total_dup > 0)
+              <div class="alert alert-warning alert-dismissible m-3 mb-0">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="icon fas fa-clone"></i>
+                <strong>{{ $pf_total_dup }}</strong> parcela(s) futura(s) já existem no sistema (chave duplicada) e foram desmarcadas.
+              </div>
+              @endif
+
+              @if($pf_total_dupVal > 0)
+              <div class="alert alert-dismissible m-3 mb-0" style="background-color:#fde8d0;border-color:#f59f55;color:#7a4a0a;">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="icon fas fa-search"></i>
+                <strong>{{ $pf_total_dupVal }}</strong> parcela(s) futura(s) possuem o mesmo valor de transação já existente no mesmo mês e foram desmarcadas.
+              </div>
+              @endif
+
+              @if($pf_total_dupAprox > 0)
+              <div class="alert alert-dismissible m-3 mb-0" style="background-color:#e8f4fd;border-color:#7ab8e8;color:#1a4a7a;">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <i class="icon fas fa-balance-scale"></i>
+                <strong>{{ $pf_total_dupAprox }}</strong> parcela(s) futura(s) possuem valor aproximado de transação já existente no mesmo mês. Verifique antes de criar.
+              </div>
+              @endif
+
+              @php $pfIndex = 0; @endphp
+              @foreach($installmentGroups as $srcIdx => $group)
+              <div class="p-3 border-bottom">
+                <div class="d-flex align-items-center mb-2">
+                  <strong class="mr-2">{{ $group['source_desc'] }}</strong>
+                  <span class="badge badge-secondary mr-2">{{ $group['current'] }}/{{ $group['total'] }}</span>
+                  <span class="text-muted small">R$ {{ number_format($group['valor'], 2, ',', '.') }}</span>
+                  <button type="button"
+                          class="btn btn-xs btn-outline-info ml-auto toggle-group-btn"
+                          data-group="{{ $srcIdx }}">
+                    Selecionar todas
+                  </button>
+                </div>
+
+                <table class="table table-sm table-bordered mb-0">
+                  <thead class="thead-light">
+                    <tr>
+                      <th style="width:3%"></th>
+                      <th style="width:5%">Parcela</th>
+                      <th>Descrição</th>
+                      <th style="width:12%">Valor</th>
+                      <th style="width:14%">Data</th>
+                      <th style="width:18%">Categoria</th>
+                      <th style="width:10%">Tipo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @foreach($group['futures'] as $future)
+                    @php
+                      $pf_dup       = $future['is_duplicada'] ?? false;
+                      $pf_dupVal    = $future['is_duplicada_por_valor'] ?? false;
+                      $pf_dupValApr = $future['is_duplicada_por_valor_aproximado'] ?? false;
+                      $pf_trClass   = $pf_dup ? 'table-warning'
+                                    : ($pf_dupVal    ? 'tr-valor-similar'
+                                    : ($pf_dupValApr ? 'tr-valor-aproximado' : ''));
+                    @endphp
+                    <tr class="{{ $pf_trClass }}">
+                      <td class="text-center">
+                        <input type="checkbox"
+                               class="pf-checkbox pf-group-{{ $srcIdx }}"
+                               name="parcelas_futuras[{{ $pfIndex }}][criar]"
+                               value="1"
+                               {{ ($pf_dup || $pf_dupVal) ? '' : 'checked' }}>
+                      </td>
+                      <td class="text-center">
+                        <span class="badge badge-info">{{ $future['parcel'] }}/{{ $future['total'] }}</span>
+                      </td>
+                      <td>
+                        <input type="text"
+                               class="form-control form-control-sm pf-descricao"
+                               name="parcelas_futuras[{{ $pfIndex }}][descricao]"
+                               value="{{ $future['descricao'] }}">
+                        <input type="hidden"
+                               name="parcelas_futuras[{{ $pfIndex }}][descricao_banco]"
+                               value="{{ $future['descricao_banco'] }}">
+                        @if($pf_dup)
+                          <span style="font-size:12px;">Já existe no sistema (chave duplicada)</span>
+                        @elseif($pf_dupVal)
+                          <span style="font-size:12px;">Mesmo valor já lançado neste mês: {{ $future['duplicada_por_valor_descricao'] }}</span>
+                        @elseif($pf_dupValApr)
+                          <span style="font-size:12px;">Valor aproximado já lançado neste mês: {{ $future['duplicada_por_valor_aproximado_descricao'] }}</span>
+                        @endif
+                      </td>
+                      <td>
+                        <input type="number"
+                               class="form-control form-control-sm"
+                               name="parcelas_futuras[{{ $pfIndex }}][valor]"
+                               value="{{ $future['valor'] }}"
+                               step="0.01">
+                      </td>
+                      <td>
+                        <input type="date"
+                               class="form-control form-control-sm"
+                               name="parcelas_futuras[{{ $pfIndex }}][data]"
+                               value="{{ $future['data'] }}">
+                      </td>
+                      <td>
+                        <select class="form-control form-control-sm pf-categoria"
+                                name="parcelas_futuras[{{ $pfIndex }}][id_categoria]"
+                                data-source-index="{{ $srcIdx }}">
+                          <option value="">Selecione</option>
+                          @foreach($categorias as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->nome }}</option>
+                          @endforeach
+                        </select>
+                      </td>
+                      <td>
+                        <select class="form-control form-control-sm pf-tipo"
+                                name="parcelas_futuras[{{ $pfIndex }}][tipo]"
+                                data-source-index="{{ $srcIdx }}">
+                          <option value="despesa">Despesa</option>
+                          <option value="lucro">Receita</option>
+                          <option value="emprestimo">Empréstimo</option>
+                        </select>
+                      </td>
+                      <input type="hidden" name="parcelas_futuras[{{ $pfIndex }}][id_cartao]" value="{{ $future['id_cartao'] }}">
+                    </tr>
+                    @php $pfIndex++; @endphp
+                    @endforeach
+                  </tbody>
+                </table>
+              </div>
+              @endforeach
+            </div>
+            <div class="card-footer">
+              <small class="text-muted">
+                <i class="fas fa-info-circle"></i>
+                As parcelas desmarcadas não serão criadas. Você pode importá-las manualmente mais tarde.
+              </small>
+            </div>
+          </div>
+          @endif
+
         </form>
 
       </div>
@@ -343,6 +520,48 @@
   document.querySelectorAll('.import-checkbox').forEach(function(checkbox) {
     toggleCategoriaRequired(checkbox);
   });
+
+  // -----------------------------------------------------------------------
+  // Parcelas Futuras: Toggle "Selecionar todas" por grupo
+  // -----------------------------------------------------------------------
+  @if(!empty($installmentGroups))
+  document.querySelectorAll('.toggle-group-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const groupId = this.getAttribute('data-group');
+      const checkboxes = document.querySelectorAll('.pf-group-' + groupId);
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      checkboxes.forEach(cb => cb.checked = !allChecked);
+      this.textContent = allChecked ? 'Selecionar todas' : 'Desmarcar todas';
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Parcelas Futuras: sincroniza categoria e tipo com a transação de origem
+  // Usa data-key para ligar o select da tabela principal aos selects futuros
+  // -----------------------------------------------------------------------
+  function syncPfByKey(sourceKey) {
+    var catSrc  = document.querySelector('.categoria-select[data-key="' + sourceKey + '"]');
+    var tipoSrc = document.querySelector('.tipo-select[data-key="' + sourceKey + '"]');
+
+    document.querySelectorAll('.pf-categoria[data-source-index="' + sourceKey + '"]')
+      .forEach(function(sel) {
+        if (catSrc) sel.value = catSrc.value;
+      });
+
+    document.querySelectorAll('.pf-tipo[data-source-index="' + sourceKey + '"]')
+      .forEach(function(sel) {
+        if (tipoSrc) sel.value = tipoSrc.value;
+      });
+  }
+
+  // Quando o usuário muda categoria/tipo de uma transação de origem, sincroniza
+  document.querySelectorAll('.categoria-select, .tipo-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var key = this.getAttribute('data-key');
+      if (key !== null) syncPfByKey(key);
+    });
+  });
+  @endif
 </script>
 
 @endsection
