@@ -53,15 +53,6 @@
           <h5><i class="icon fas fa-search"></i> Valor já lançado neste mês!</h5>
           <p><strong>{{ $valorDuplicadas }}</strong> transação(ões) possuem o mesmo valor, cartão e mês de uma transação já existente.</p>
           <p>As linhas em <span style="background:#fde8d0;padding:2px 6px;">laranja</span> estão marcadas, mas verifique se não são repetições.</p>
-          <ul class="mb-0 mt-1">
-            @foreach($transactions->filter(fn($t) => $t['is_duplicada_por_valor'] ?? false) as $tSimilar)
-              <li>
-                <strong>{{ $tSimilar['descricao_banco'] }}</strong>
-                (R$ {{ number_format($tSimilar['valor'], 2, ',', '.') }})
-                → encontrou: <em>{{ $tSimilar['duplicada_por_valor_descricao'] }}</em>
-              </li>
-            @endforeach
-          </ul>
         </div>
         @endif
 
@@ -122,7 +113,7 @@
                                class="import-checkbox" 
                                name="transacoes[{{ $loop->index }}][importar]" 
                                value="1" 
-                               {{ $transaction['is_duplicada'] ? '' : 'checked' }}>
+                               {{ $transaction['is_duplicada'] || $transaction['is_duplicada_por_valor'] ? '' : 'checked' }}>
                       </td>
                       
                       <td>
