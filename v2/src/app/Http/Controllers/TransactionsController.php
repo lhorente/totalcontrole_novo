@@ -385,6 +385,15 @@ class TransactionsController extends Controller
       ->with('success', 'Lançamento atualizado com sucesso.');
   }
 
+  public function destroy($id){
+    $transaction = Transaction::findOrFail($id);
+    $transaction->delete();
+
+    return redirect()
+      ->route('transactions.month')
+      ->with('success', 'Lançamento #'.$id.' excluído com sucesso.');
+  }
+
   public function quickUpdate(Request $request, $id){
     $transaction = Transaction::findOrFail($id);
 

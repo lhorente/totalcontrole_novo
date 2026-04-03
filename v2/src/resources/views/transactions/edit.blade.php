@@ -181,9 +181,15 @@
               <a href="{{ route('transactions.view', $transaction->id) }}" class="btn btn-outline-secondary">
                 <i class="fa fa-times"></i> Cancelar
               </a>
-              <button type="submit" class="btn btn-primary">
-                <i class="fa fa-save"></i> Salvar alterações
-              </button>
+              <div>
+                <button type="button" class="btn btn-danger mr-2"
+                        onclick="confirmDelete()">
+                  <i class="fa fa-trash"></i> Excluir
+                </button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fa fa-save"></i> Salvar alterações
+                </button>
+              </div>
             </div>
 
           </div>
@@ -226,7 +232,18 @@
   </div>{{-- /.container --}}
 </div>{{-- /.content --}}
 
+<form id="form-delete" method="POST" action="{{ route('transactions.destroy', $transaction->id) }}" style="display:none">
+  @csrf
+  @method('DELETE')
+</form>
+
 <script>
+function confirmDelete() {
+  if (confirm('Tem certeza que deseja excluir o lançamento #{{ $transaction->id }}? Esta ação não pode ser desfeita.')) {
+    document.getElementById('form-delete').submit();
+  }
+}
+
 (function () {
   var tipoSelect = document.getElementById('tipo');
   var fieldRecebimento = document.getElementById('field-data-recebimento');

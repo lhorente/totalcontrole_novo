@@ -61,6 +61,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
   Route::post('/transactions/new',[TransactionsController::class, 'store'])->name('transactions.store');
   Route::get('/transactions/edit/{id}',[TransactionsController::class, 'edit'])->name('transactions.edit');
   Route::post('/transactions/edit/{id}',[TransactionsController::class, 'update'])->name('transactions.update');
+  Route::delete('/transactions/{id}',[TransactionsController::class, 'destroy'])->name('transactions.destroy');
   Route::post('/transactions/quick-update/{id}',[TransactionsController::class, 'quickUpdate'])->name('transactions.quickUpdate');
   Route::get('/transactions/modal_save',[TransactionsController::class, 'saveModal']);
   Route::get('/transactions/import',[TransactionsController::class, 'import'])->name('transactions.import');

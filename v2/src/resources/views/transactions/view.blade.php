@@ -207,8 +207,16 @@
               <a href="{{ route('transactions.edit', $transaction->id) }}" class="btn btn-sm btn-primary ml-1">
                 <i class="fa fa-edit"></i> Editar
               </a>
+              <button type="button" class="btn btn-sm btn-danger ml-1" onclick="confirmDelete()">
+                <i class="fa fa-trash"></i> Excluir
+              </button>
             </div>
           </div>
+
+          <form id="form-delete" method="POST" action="{{ route('transactions.destroy', $transaction->id) }}" style="display:none">
+            @csrf
+            @method('DELETE')
+          </form>
         </div>
       </div>
 
@@ -248,4 +256,12 @@
     </div>{{-- /.row --}}
   </div>{{-- /.container --}}
 </div>{{-- /.content --}}
+
+<script>
+function confirmDelete() {
+  if (confirm('Tem certeza que deseja excluir o lançamento #{{ $transaction->id }}? Esta ação não pode ser desfeita.')) {
+    document.getElementById('form-delete').submit();
+  }
+}
+</script>
 @endsection
