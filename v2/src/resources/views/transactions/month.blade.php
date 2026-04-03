@@ -507,13 +507,27 @@
               <table class="table table-sm table-hover mb-0">
                 <thead>
                   <tr>
-                    <th class="d-none d-sm-table-cell" style="width:90px">Data</th>
-                    <th>Descrição</th>
-                    <th class="d-none d-md-table-cell" style="width:120px">Categoria</th>
-                    <th class="d-none d-md-table-cell" style="width:90px">Tipo</th>
-                    <th class="d-none d-md-table-cell" style="width:120px">Cartão</th>
-                    <th class="d-none d-md-table-cell" style="width:120px">Pessoa</th>
-                    <th class="text-right" style="width:100px">Valor</th>
+                    <th class="d-none d-sm-table-cell th-sortable" style="width:90px; cursor:pointer; user-select:none" data-sort-key="data" data-sort-type="text">
+                      Data <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    </th>
+                    <th class="th-sortable" style="cursor:pointer; user-select:none" data-sort-key="descricao" data-sort-type="text">
+                      Descrição <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    </th>
+                    <th class="d-none d-md-table-cell th-sortable" style="width:120px; cursor:pointer; user-select:none" data-sort-key="categoria" data-sort-type="text">
+                      Categoria <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    </th>
+                    <th class="d-none d-md-table-cell th-sortable" style="width:90px; cursor:pointer; user-select:none" data-sort-key="tipo" data-sort-type="text">
+                      Tipo <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    </th>
+                    <th class="d-none d-md-table-cell th-sortable" style="width:120px; cursor:pointer; user-select:none" data-sort-key="cartao" data-sort-type="text">
+                      Cartão <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    </th>
+                    <th class="d-none d-md-table-cell th-sortable" style="width:120px; cursor:pointer; user-select:none" data-sort-key="pessoa" data-sort-type="text">
+                      Pessoa <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    </th>
+                    <th class="text-right th-sortable" style="width:100px; cursor:pointer; user-select:none" data-sort-key="valor" data-sort-type="number">
+                      Valor <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    </th>
                     <th class="text-right d-none d-sm-table-cell" style="width:110px">Pagamento</th>
                   </tr>
                 </thead>
@@ -524,7 +538,14 @@
                     $tipoBadge  = ['despesa'=>'danger','lucro'=>'success','transferencia'=>'secondary','emprestimo'=>'warning','pagamento_emprestimo'=>'success'];
                   @endphp
                   <tr style="cursor:pointer"
-                      onclick="window.location='/transactions/view/{{ $transaction->id }}'">
+                      onclick="window.location='/transactions/view/{{ $transaction->id }}'"
+                      data-sort-data="{{ $transaction->data->format('Y-m-d') }}"
+                      data-sort-descricao="{{ $transaction->descricao ?: $transaction->descricao_banco }}"
+                      data-sort-categoria="{{ optional($transaction->category)->nome ?? '' }}"
+                      data-sort-tipo="{{ $tipoLabels[$transaction->tipo] ?? $transaction->tipo ?? '' }}"
+                      data-sort-cartao="{{ optional($transaction->credit_card)->descricao ?? '' }}"
+                      data-sort-pessoa="{{ optional($transaction->contact)->nome ?? '' }}"
+                      data-sort-valor="{{ $transaction->valor }}">
                     <td class="text-nowrap d-none d-sm-table-cell">{{ $transaction->data->format('d/m/Y') }}</td>
                     <td>
                       @if ($transaction->category)
@@ -661,6 +682,57 @@
 
 <script>
 (function () {
+  // ── Table sorting ────────────────────────────────────────────────────────
+  var sortState = { key: null, dir: 1 };
+
+  function sortTable(key, type) {
+    var table = document.querySelector('#view-table table');
+    if (!table) return;
+    var tbody = table.querySelector('tbody');
+    var rows  = Array.from(tbody.querySelectorAll('tr'));
+
+    // Toggle direction when clicking the same column, otherwise default asc
+    if (sortState.key === key) {
+      sortState.dir = sortState.dir === 1 ? -1 : 1;
+    } else {
+      sortState.key = key;
+      sortState.dir = 1;
+    }
+
+    rows.sort(function (a, b) {
+      var aVal = (a.dataset['sort' + key.charAt(0).toUpperCase() + key.slice(1)] || '').trim();
+      var bVal = (b.dataset['sort' + key.charAt(0).toUpperCase() + key.slice(1)] || '').trim();
+
+      var cmp;
+      if (type === 'number') {
+        cmp = parseFloat(aVal) - parseFloat(bVal);
+      } else {
+        cmp = aVal.localeCompare(bVal, 'pt-BR', { sensitivity: 'base' });
+      }
+      return cmp * sortState.dir;
+    });
+
+    rows.forEach(function (r) { tbody.appendChild(r); });
+
+    // Update icons
+    document.querySelectorAll('.th-sortable .sort-icon').forEach(function (icon) {
+      icon.className = 'fas fa-sort sort-icon text-muted ml-1';
+      icon.style.fontSize = '.75em';
+    });
+    var activeIcon = document.querySelector('.th-sortable[data-sort-key="' + key + '"] .sort-icon');
+    if (activeIcon) {
+      activeIcon.className = 'fas ' + (sortState.dir === 1 ? 'fa-sort-up' : 'fa-sort-down') + ' sort-icon text-primary ml-1';
+    }
+  }
+
+  document.querySelectorAll('.th-sortable').forEach(function (th) {
+    th.addEventListener('click', function () {
+      sortTable(th.dataset.sortKey, th.dataset.sortType);
+    });
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── View mode toggle ─────────────────────────────────────────────────────
   var STORAGE_KEY = 'transactions_view_mode';
   var mode = localStorage.getItem(STORAGE_KEY) || 'table';
 
