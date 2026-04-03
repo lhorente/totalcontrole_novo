@@ -39,6 +39,7 @@
 
     <form method="POST" action="{{ route('transactions.store') }}">
       @csrf
+      <input type="hidden" name="_back" value="{{ request('_back') }}">
 
       <div class="row">
 
@@ -164,7 +165,7 @@
             </div>{{-- /.card-body --}}
 
             <div class="card-footer d-flex justify-content-between">
-              <a href="{{ route('transactions.month') }}" class="btn btn-outline-secondary">
+              <a href="{{ request('_back') ?: route('transactions.month') }}" class="btn btn-outline-secondary">
                 <i class="fa fa-times"></i> Cancelar
               </a>
               <button type="submit" class="btn btn-primary">

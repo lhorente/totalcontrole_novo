@@ -84,6 +84,7 @@
                   </span>
                   <form method="POST" action="{{ route('transactions.quickUpdate', $transaction->id) }}" class="d-inline ml-2">
                     @csrf
+                    <input type="hidden" name="_back" value="{{ request('_back') }}">
                     <input type="hidden" name="field" value="data_pagamento">
                     <input type="hidden" name="value" value="">
                     <button type="submit" class="btn btn-xs btn-outline-secondary" title="Limpar data de pagamento"
@@ -95,6 +96,7 @@
                   <span class="text-danger"><i class="fa fa-clock"></i> Pendente</span>
                   <form method="POST" action="{{ route('transactions.quickUpdate', $transaction->id) }}" class="d-inline ml-2" id="form-pagamento">
                     @csrf
+                    <input type="hidden" name="_back" value="{{ request('_back') }}">
                     <input type="hidden" name="field" value="data_pagamento">
                     <div class="input-group input-group-sm d-inline-flex" style="width:auto;vertical-align:middle">
                       <input type="date" name="value" class="form-control form-control-sm"
@@ -119,6 +121,7 @@
                   </span>
                   <form method="POST" action="{{ route('transactions.quickUpdate', $transaction->id) }}" class="d-inline ml-2">
                     @csrf
+                    <input type="hidden" name="_back" value="{{ request('_back') }}">
                     <input type="hidden" name="field" value="data_recebimento">
                     <input type="hidden" name="value" value="">
                     <button type="submit" class="btn btn-xs btn-outline-secondary" title="Limpar data de recebimento"
@@ -130,6 +133,7 @@
                   <span class="text-warning"><i class="fa fa-clock"></i> Pendente</span>
                   <form method="POST" action="{{ route('transactions.quickUpdate', $transaction->id) }}" class="d-inline ml-2" id="form-recebimento">
                     @csrf
+                    <input type="hidden" name="_back" value="{{ request('_back') }}">
                     <input type="hidden" name="field" value="data_recebimento">
                     <div class="input-group input-group-sm d-inline-flex" style="width:auto;vertical-align:middle">
                       <input type="date" name="value" class="form-control form-control-sm"
@@ -200,11 +204,11 @@
               </small>
             </div>
             <div>
-              <a href="{{ route('transactions.month', [$transaction->data->format('Y'), (int)$transaction->data->format('m')]) }}"
+              <a href="{{ request('_back') ?: route('transactions.month', [$transaction->data->format('Y'), (int)$transaction->data->format('m')]) }}"
                  class="btn btn-sm btn-outline-secondary">
                 <i class="fa fa-arrow-left"></i> Voltar
               </a>
-              <a href="{{ route('transactions.edit', $transaction->id) }}" class="btn btn-sm btn-primary ml-1">
+              <a href="{{ route('transactions.edit', $transaction->id) . (request('_back') ? '?_back='.urlencode(request('_back')) : '') }}" class="btn btn-sm btn-primary ml-1">
                 <i class="fa fa-edit"></i> Editar
               </a>
               <button type="button" class="btn btn-sm btn-danger ml-1" onclick="confirmDelete()">
@@ -216,6 +220,7 @@
           <form id="form-delete" method="POST" action="{{ route('transactions.destroy', $transaction->id) }}" style="display:none">
             @csrf
             @method('DELETE')
+            <input type="hidden" name="_back" value="{{ request('_back') }}">
           </form>
         </div>
       </div>

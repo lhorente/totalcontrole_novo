@@ -47,6 +47,7 @@
 
     <form method="POST" action="{{ route('transactions.update', $transaction->id) }}">
       @csrf
+      <input type="hidden" name="_back" value="{{ request('_back') }}">
 
       <div class="row">
 
@@ -178,7 +179,7 @@
             </div>{{-- /.card-body --}}
 
             <div class="card-footer d-flex justify-content-between">
-              <a href="{{ route('transactions.view', $transaction->id) }}" class="btn btn-outline-secondary">
+              <a href="{{ route('transactions.view', $transaction->id) . (request('_back') ? '?_back='.urlencode(request('_back')) : '') }}" class="btn btn-outline-secondary">
                 <i class="fa fa-times"></i> Cancelar
               </a>
               <div>
@@ -235,6 +236,7 @@
 <form id="form-delete" method="POST" action="{{ route('transactions.destroy', $transaction->id) }}" style="display:none">
   @csrf
   @method('DELETE')
+  <input type="hidden" name="_back" value="{{ request('_back') }}">
 </form>
 
 <script>

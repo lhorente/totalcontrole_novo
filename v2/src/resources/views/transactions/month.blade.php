@@ -554,7 +554,7 @@
                     $tipoBadge  = ['despesa'=>'danger','lucro'=>'success','transferencia'=>'secondary','emprestimo'=>'warning','pagamento_emprestimo'=>'success'];
                   @endphp
                   <tr style="cursor:pointer"
-                      onclick="window.location='/transactions/view/{{ $transaction->id }}'"
+                      onclick="window.location='/transactions/view/{{ $transaction->id }}?_back={{ urlencode(request()->fullUrl()) }}'"
                       data-sort-data="{{ $transaction->data->format('Y-m-d') }}"
                       data-sort-descricao="{{ $transaction->descricao ?: $transaction->descricao_banco }}"
                       data-sort-categoria="{{ optional($transaction->category)->nome ?? '' }}"
@@ -638,7 +638,7 @@
         {{-- CARD VIEW --}}
         <div id="view-cards" style="display:none">
           @forelse ($transactions as $transaction)
-          <a href="/transactions/view/{{ $transaction->id }}" class="info-box info-box-transaction">
+          <a href="/transactions/view/{{ $transaction->id }}?_back={{ urlencode(request()->fullUrl()) }}" class="info-box info-box-transaction">
             <span class="info-box-icon {{ $transaction->data_pagamento ? 'bg-secondary' : ($transaction->tipo === 'receita' ? 'bg-success' : 'bg-danger') }}">
               @if ($transaction->category)
               <i class="{{ $transaction->category->icon_class }}"></i>

@@ -332,8 +332,12 @@ class TransactionsController extends Controller
       'status'         => 'disponivel',
     ]);
 
-    return redirect()
-      ->route('transactions.view', $transaction->id)
+    $backUrl = $request->input('_back');
+    $viewUrl = route('transactions.view', $transaction->id);
+    if ($backUrl) {
+      $viewUrl .= '?_back=' . urlencode($backUrl);
+    }
+    return redirect($viewUrl)
       ->with('success', 'Lançamento criado com sucesso.');
   }
 
@@ -392,19 +396,22 @@ class TransactionsController extends Controller
 
     $transaction->save();
 
-    return redirect()
-      ->route('transactions.view', $id)
+    $backUrl = $request->input('_back');
+    $viewUrl = route('transactions.view', $id);
+    if ($backUrl) {
+      $viewUrl .= '?_back=' . urlencode($backUrl);
+    }
+    return redirect($viewUrl)
       ->with('success', 'Lançamento atualizado com sucesso.');
   }
 
-  public function destroy($id){
+  public function destroy(Request $request, $id){
     $transaction = Transaction::findOrFail($id);
     $transaction->delete();
 
-    return redirect()
-      ->route('transactions.month')
-      ->with('success', 'Lançamento #'.$id.' excluído
-       com sucesso.');
+    $backUrl = $request->input('_back');
+    return redirect($backUrl ?: route('transactions.month'))
+      ->with('success', 'Lançamento #'.$id.' excluído com sucesso.');
   }
 
   public function quickUpdate(Request $request, $id){
@@ -424,8 +431,12 @@ class TransactionsController extends Controller
     $transaction->$field = $request->input('value') ?: null;
     $transaction->save();
 
-    return redirect()
-      ->route('transactions.view', $id)
+    $backUrl = $request->input('_back');
+    $viewUrl = route('transactions.view', $id);
+    if ($backUrl) {
+      $viewUrl .= '?_back=' . urlencode($backUrl);
+    }
+    return redirect($viewUrl)
       ->with('success', 'Lançamento atualizado com sucesso.');
   }
 
