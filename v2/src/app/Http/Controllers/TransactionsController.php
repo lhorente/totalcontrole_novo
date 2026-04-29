@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Contact;
 use App\Models\CreditCard;
 use App\Models\Wallet;
+use App\Models\Workspace;
 use App\Http\Requests\StoreContact;
 use App\Http\Requests\ImportCsvRequest;
 use App\Services\CsvParserService;
@@ -271,8 +272,9 @@ class TransactionsController extends Controller
   }
 
   public function view($id){
-    // CurrentUserScope garante que apenas transações do usuário logado são retornadas
-    $transaction = Transaction::with(['category', 'contact', 'wallet', 'credit_card'])
+    $transaction = Transaction::withoutGlobalScopes()
+                               ->where('id_usuario', Auth::id())
+                               ->with(['category', 'contact', 'wallet', 'credit_card', 'workspace'])
                                ->findOrFail($id);
 
     return view('transactions/view', compact('transaction'));
@@ -318,8 +320,16 @@ class TransactionsController extends Controller
       'data_pagamento' => 'nullable|date',
     ]);
 
+    $workspaceId = session('active_workspace_id');
+    abort_unless(
+      Auth::user()->workspaces()->where('workspaces.id', $workspaceId)->where('workspaces.ativo', true)->exists(),
+      403,
+      'Workspace inv\u00e1lido ou sem permiss\u00e3o.'
+    );
+
     $transaction = Transaction::create([
       'id_usuario'     => Auth::id(),
+      'id_workspace'   => $workspaceId,
       'descricao'      => $request->input('descricao'),
       'valor'          => $request->input('valor'),
       'data'           => $request->input('data'),
@@ -342,7 +352,9 @@ class TransactionsController extends Controller
   }
 
   public function edit($id){
-    $transaction = Transaction::with(['category', 'contact', 'wallet', 'credit_card'])
+    $transaction = Transaction::withoutGlobalScopes()
+                               ->where('id_usuario', Auth::id())
+                               ->with(['category', 'contact', 'wallet', 'credit_card'])
                                ->findOrFail($id);
 
     $categorias = Category::where('id_usuario', Auth::id())
@@ -362,7 +374,9 @@ class TransactionsController extends Controller
                      ->orderBy('titulo')
                      ->get();
 
-    return view('transactions/edit', compact('transaction', 'categorias', 'cartoes', 'pessoas', 'caixas'));
+    $workspaces = Auth::user()->workspaces()->where('workspaces.ativo', true)->orderBy('workspaces.nome')->get();
+
+    return view('transactions/edit', compact('transaction', 'categorias', 'cartoes', 'pessoas', 'caixas', 'workspaces'));
   }
 
   public function update(Request $request, $id){
@@ -377,9 +391,17 @@ class TransactionsController extends Controller
       'id_caixa'       => 'nullable|integer',
       'id_cartao'      => 'nullable|integer',
       'id_cliente'     => 'nullable|integer',
+      'id_workspace'   => 'required|integer',
       'data_pagamento'    => 'nullable|date',
       'data_recebimento' => 'nullable|date',
     ]);
+
+    $newWorkspaceId = $request->input('id_workspace');
+    abort_unless(
+      Auth::user()->workspaces()->where('workspaces.id', $newWorkspaceId)->where('workspaces.ativo', true)->exists(),
+      403,
+      'Workspace inválido ou sem permissão.'
+    );
 
     $transaction->descricao        = $request->input('descricao');
     $transaction->valor            = $request->input('valor');
@@ -393,6 +415,7 @@ class TransactionsController extends Controller
     $transaction->data_recebimento = in_array($request->input('tipo'), ['emprestimo', 'pagamento_emprestimo'])
       ? ($request->input('data_recebimento') ?: null)
       : null;
+    $transaction->id_workspace = $newWorkspaceId;
 
     $transaction->save();
 
@@ -617,6 +640,13 @@ class TransactionsController extends Controller
     $duplicadas = 0;
     $parcelasCount = 0;
 
+    $workspaceId = session('active_workspace_id');
+    abort_unless(
+      Auth::user()->workspaces()->where('workspaces.id', $workspaceId)->where('workspaces.ativo', true)->exists(),
+      403,
+      'Workspace inválido ou sem permissão.'
+    );
+
     // Busca a caixa padrão do usuário (exibir_no_saldo = 1)
     $caixaPadrao = Wallet::where('id_usuario', Auth::id())
                          ->where('exibir_no_saldo', 1)
@@ -624,7 +654,7 @@ class TransactionsController extends Controller
     
     $idCaixa = $caixaPadrao ? $caixaPadrao->id : null;
 
-    DB::transaction(function () use ($transacoes, $dataFatura, $idCaixa, $parcelasFuturas, &$count, &$duplicadas, &$parcelasCount) {
+    DB::transaction(function () use ($transacoes, $dataFatura, $idCaixa, $workspaceId, $parcelasFuturas, &$count, &$duplicadas, &$parcelasCount) {
       foreach ($transacoes as $item) {
         // Importa apenas se o checkbox estiver marcado
         if (!isset($item['importar']) || $item['importar'] != '1') {
@@ -653,17 +683,18 @@ class TransactionsController extends Controller
         }
 
         Transaction::create([
-          'id_categoria' => $item['id_categoria'] ?? null,
+          'id_categoria'    => $item['id_categoria'] ?? null,
           'descricao_banco' => $item['descricao_banco'] ?? '',
-          'descricao' => $item['descricao'] ?? '',
-          'valor' => $item['valor'] ?? 0,
-          'data' => $dataFatura ?? now(),
-          'id_cartao' => $item['id_cartao'] ?? null,
-          'id_caixa' => $idCaixa,
-          'tipo' => $item['tipo'] ?? 'despesa',
-          'id_cliente' => $item['id_cliente'] ?? null,
-          'id_usuario' => Auth::id(),
-          'chave_banco' => $chaveBanco,
+          'descricao'       => $item['descricao'] ?? '',
+          'valor'           => $item['valor'] ?? 0,
+          'data'            => $dataFatura ?? now(),
+          'id_cartao'       => $item['id_cartao'] ?? null,
+          'id_caixa'        => $idCaixa,
+          'tipo'            => $item['tipo'] ?? 'despesa',
+          'id_cliente'      => $item['id_cliente'] ?? null,
+          'id_usuario'      => Auth::id(),
+          'id_workspace'    => $workspaceId,
+          'chave_banco'     => $chaveBanco,
         ]);
         $count++;
       }
@@ -685,6 +716,7 @@ class TransactionsController extends Controller
           'tipo'            => $pf['tipo'] ?? 'despesa',
           'id_cliente'      => null,
           'id_usuario'      => Auth::id(),
+          'id_workspace'    => $workspaceId,
         ]);
         $parcelasCount++;
       }

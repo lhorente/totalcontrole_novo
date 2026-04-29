@@ -4,7 +4,6 @@ namespace App\Models\Scopes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
-use Illuminate\Support\Facades\Auth;
 
 class CurrentUserScope implements Scope
 {
@@ -17,6 +16,6 @@ class CurrentUserScope implements Scope
      */
     public function apply(Builder $builder, Model $model)
     {
-        $builder->where('id_usuario', Auth::id());
+        $builder->where('id_workspace', session('active_workspace_id'));
     }
 }

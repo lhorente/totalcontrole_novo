@@ -186,6 +186,19 @@
                 @endif
               </dd>
 
+              <dt class="col-sm-4">Workspace</dt>
+              <dd class="col-sm-8">
+                @if ($transaction->financialUnit ?? $transaction->workspace ?? null)
+                  @php $ws = $transaction->workspace ?? $transaction->financialUnit; @endphp
+                  <i class="fas fa-{{ $ws->tipo === 'pessoal' ? 'user' : 'building' }} text-muted mr-1"></i>
+                  {{ $ws->nome }}
+                @elseif ($transaction->id_workspace)
+                  <span class="text-muted">#{{ $transaction->id_workspace }}</span>
+                @else
+                  <span class="text-muted">—</span>
+                @endif
+              </dd>
+
               @if ($transaction->chave_banco)
               <dt class="col-sm-4">Chave banco</dt>
               <dd class="col-sm-8"><small class="text-muted">{{ $transaction->chave_banco }}</small></dd>

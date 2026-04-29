@@ -65,6 +65,26 @@ scratch. This page gets rid of all links and provides the needed markup only.
 
       <!-- Right navbar links -->
       <ul class="order-1 order-md-3 navbar-nav navbar-no-expand ml-auto">
+        <!-- Workspace Switcher -->
+        @isset($userWorkspaces)
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
+            <i class="fas fa-layer-group mr-1"></i>
+            {{ $activeWorkspace->nome ?? 'Workspace' }}
+          </a>
+          <div class="dropdown-menu dropdown-menu-right">
+            @foreach($userWorkspaces as $ws)
+              <form method="POST" action="{{ route('workspace.switch', $ws->id) }}">
+                @csrf
+                <button type="submit" class="dropdown-item {{ ($activeWorkspace && $activeWorkspace->id === $ws->id) ? 'active' : '' }}">
+                  <i class="fas fa-{{ $ws->tipo === 'pessoal' ? 'user' : 'building' }} mr-2"></i>
+                  {{ $ws->nome }}
+                </button>
+              </form>
+            @endforeach
+          </div>
+        </li>
+        @endisset
         <!-- Notifications Dropdown Menu -->
         <li class="nav-item dropdown">
           <a class="nav-link" data-toggle="dropdown" href="#">

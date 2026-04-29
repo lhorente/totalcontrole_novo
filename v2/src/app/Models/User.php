@@ -27,6 +27,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'document'
     ];
 
     /**
@@ -58,4 +59,9 @@ class User extends Authenticatable
     protected $appends = [
         'profile_photo_url',
     ];
+
+    public function workspaces()
+    {
+        return $this->belongsToMany(Workspace::class, 'workspace_users');
+    }
 }

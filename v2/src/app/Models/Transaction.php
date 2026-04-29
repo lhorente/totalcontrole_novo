@@ -32,6 +32,7 @@ class Transaction extends Model
     'tipo',
     'status',
     'chave_banco',
+    'id_workspace',
   ];
 
   protected $dates = [
@@ -64,6 +65,11 @@ class Transaction extends Model
   public function credit_card()
   {
       return $this->belongsTo('App\Models\CreditCard','id_cartao');
+  }
+
+  public function workspace()
+  {
+      return $this->belongsTo(Workspace::class, 'id_workspace');
   }
 
   static function getTransactions(){

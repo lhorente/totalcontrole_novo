@@ -8,6 +8,8 @@ use App\Http\Controllers\CreditCardsController;
 use App\Http\Controllers\TransactionsController;
 use App\Http\Controllers\DashboardController;
 
+use App\Http\Controllers\WorkspaceController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -24,7 +26,7 @@ Route::get('/', function () {
 });
 
 // Módulo Básico: Padrão em todas as contas
-Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+Route::middleware(['auth:sanctum', 'verified', 'workspace'])->group(function () {
   Route::get('/',[DashboardController::class, 'index']);
 
   Route::get('/contacts',[ContactsController::class, 'index']);
@@ -68,4 +70,6 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
   Route::get('/transactions/import',[TransactionsController::class, 'import'])->name('transactions.import');
   Route::post('/transactions/import-preview',[TransactionsController::class, 'importPreview'])->name('transactions.importPreview');
   Route::post('/transactions/import-store',[TransactionsController::class, 'importStore'])->name('transactions.importStore');
+
+  Route::post('/workspace/switch/{id}', [WorkspaceController::class, 'switch'])->name('workspace.switch');
 });

@@ -176,6 +176,19 @@
                 @error('id_cliente')<div class="invalid-feedback">{{ $message }}</div>@enderror
               </div>
 
+              {{-- Workspace --}}
+              <div class="form-group">
+                <label for="id_workspace">Workspace</label>
+                <select id="id_workspace" name="id_workspace" class="form-control @error('id_workspace') is-invalid @enderror">
+                  @foreach ($userWorkspaces ?? [] as $ws)
+                    <option value="{{ $ws->id }}" {{ old('id_workspace', $transaction->id_workspace) == $ws->id ? 'selected' : '' }}>
+                      {{ $ws->nome }}
+                    </option>
+                  @endforeach
+                </select>
+                @error('id_workspace')<div class="invalid-feedback">{{ $message }}</div>@enderror
+              </div>
+
             </div>{{-- /.card-body --}}
 
             <div class="card-footer d-flex justify-content-between">
