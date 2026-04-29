@@ -117,21 +117,6 @@
                 @error('id_categoria')<div class="invalid-feedback">{{ $message }}</div>@enderror
               </div>
 
-              {{-- Carteira --}}
-              <div class="form-group">
-                <label for="id_caixa">Carteira</label>
-                <select id="id_caixa" name="id_caixa"
-                        class="form-control @error('id_caixa') is-invalid @enderror">
-                  <option value="">Nenhuma</option>
-                  @foreach ($caixas as $cx)
-                    <option value="{{ $cx->id }}">
-                        {{ $cx->titulo }}
-                    </option>
-                  @endforeach
-                </select>
-                @error('id_caixa')<div class="invalid-feedback">{{ $message }}</div>@enderror
-              </div>
-
               {{-- Cartão --}}
               <div class="form-group">
                 <label for="id_cartao">Cartão de crédito</label>
@@ -183,7 +168,6 @@
             <div class="card-body">
               <ul class="pl-3 mb-0 small text-muted">
                 <li>Preencha a <strong>data de pagamento</strong> apenas se a transação já foi liquidada.</li>
-                <li>Selecione <strong>Carteira</strong> ou <strong>Cartão</strong>, não ambos.</li>
                 <li>A <strong>Pessoa</strong> é útil para rastrear empréstimos e recebimentos.</li>
               </ul>
             </div>

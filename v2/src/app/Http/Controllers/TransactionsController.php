@@ -294,17 +294,13 @@ class TransactionsController extends Controller
                        ->orderBy('nome')
                        ->get();
 
-    $caixas = Wallet::where('id_usuario', Auth::id())
-                     ->orderBy('titulo')
-                     ->get();
-
     // Pré-selecionar tipo/data via query string: /transactions/new?tipo=despesa&data=2026-03-08
     $defaults = [
       'tipo' => $request->input('tipo', 'despesa'),
       'data' => $request->input('data', date('Y-m-d')),
     ];
 
-    return view('transactions/new', compact('categorias', 'cartoes', 'pessoas', 'caixas', 'defaults'));
+    return view('transactions/new', compact('categorias', 'cartoes', 'pessoas', 'defaults'));
   }
 
   public function store(Request $request){
@@ -314,11 +310,12 @@ class TransactionsController extends Controller
       'data'           => 'required|date',
       'tipo'           => 'required|in:despesa,lucro,transferencia,investimento,emprestimo,pagamento_emprestimo',
       'id_categoria'   => 'nullable|integer',
-      'id_caixa'       => 'nullable|integer',
       'id_cartao'      => 'nullable|integer',
       'id_cliente'     => 'nullable|integer',
       'data_pagamento' => 'nullable|date',
     ]);
+
+    $idCaixa = Wallet::where('id_usuario', Auth::id())->where('exibir_no_saldo', 1)->value('id');
 
     $workspaceId = session('active_workspace_id');
     abort_unless(
@@ -335,7 +332,7 @@ class TransactionsController extends Controller
       'data'           => $request->input('data'),
       'tipo'           => $request->input('tipo'),
       'id_categoria'   => $request->input('id_categoria') ?: null,
-      'id_caixa'       => $request->input('id_caixa') ?: null,
+      'id_caixa'       => $idCaixa,
       'id_cartao'      => $request->input('id_cartao') ?: null,
       'id_cliente'     => $request->input('id_cliente') ?: null,
       'data_pagamento' => $request->input('data_pagamento') ?: null,
@@ -370,13 +367,9 @@ class TransactionsController extends Controller
                        ->orderBy('nome')
                        ->get();
 
-    $caixas = Wallet::where('id_usuario', Auth::id())
-                     ->orderBy('titulo')
-                     ->get();
-
     $workspaces = Auth::user()->workspaces()->where('workspaces.ativo', true)->orderBy('workspaces.nome')->get();
 
-    return view('transactions/edit', compact('transaction', 'categorias', 'cartoes', 'pessoas', 'caixas', 'workspaces'));
+    return view('transactions/edit', compact('transaction', 'categorias', 'cartoes', 'pessoas', 'workspaces'));
   }
 
   public function update(Request $request, $id){
@@ -388,7 +381,6 @@ class TransactionsController extends Controller
       'data'           => 'required|date',
       'tipo'           => 'required|in:despesa,lucro,transferencia,investimento,emprestimo,pagamento_emprestimo',
       'id_categoria'   => 'nullable|integer',
-      'id_caixa'       => 'nullable|integer',
       'id_cartao'      => 'nullable|integer',
       'id_cliente'     => 'nullable|integer',
       'id_workspace'   => 'required|integer',
@@ -403,12 +395,14 @@ class TransactionsController extends Controller
       'Workspace inválido ou sem permissão.'
     );
 
+    $idCaixa = Wallet::where('id_usuario', Auth::id())->where('exibir_no_saldo', 1)->value('id');
+
     $transaction->descricao        = $request->input('descricao');
     $transaction->valor            = $request->input('valor');
     $transaction->data             = $request->input('data');
     $transaction->tipo             = $request->input('tipo');
     $transaction->id_categoria     = $request->input('id_categoria') ?: null;
-    $transaction->id_caixa         = $request->input('id_caixa') ?: null;
+    $transaction->id_caixa         = $idCaixa;
     $transaction->id_cartao        = $request->input('id_cartao') ?: null;
     $transaction->id_cliente       = $request->input('id_cliente') ?: null;
     $transaction->data_pagamento   = $request->input('data_pagamento') ?: null;

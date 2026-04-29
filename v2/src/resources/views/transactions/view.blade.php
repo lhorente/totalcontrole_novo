@@ -159,15 +159,6 @@
                 @endif
               </dd>
 
-              <dt class="col-sm-4">Carteira</dt>
-              <dd class="col-sm-8">
-                @if ($transaction->wallet)
-                  <i class="fa fa-wallet text-muted mr-1"></i> {{ $transaction->wallet->titulo }}
-                @else
-                  <span class="text-muted">—</span>
-                @endif
-              </dd>
-
               <dt class="col-sm-4">Cartão</dt>
               <dd class="col-sm-8">
                 @if ($transaction->credit_card)

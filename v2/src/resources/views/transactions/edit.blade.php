@@ -134,20 +134,6 @@
                 @error('id_categoria')<div class="invalid-feedback">{{ $message }}</div>@enderror
               </div>
 
-              {{-- Carteira --}}
-              <div class="form-group">
-                <label for="id_caixa">Carteira</label>
-                <select id="id_caixa" name="id_caixa" class="form-control @error('id_caixa') is-invalid @enderror">
-                  <option value="">Nenhuma</option>
-                  @foreach ($caixas as $cx)
-                    <option value="{{ $cx->id }}" {{ old('id_caixa', $transaction->id_caixa ?? null) == $cx->id ? 'selected' : '' }}>
-                        {{ $cx->titulo }}
-                    </option>
-                  @endforeach
-                </select>
-                @error('id_caixa')<div class="invalid-feedback">{{ $message }}</div>@enderror
-              </div>
-
               {{-- Cartão --}}
               <div class="form-group">
                 <label for="id_cartao">Cartão de crédito</label>
