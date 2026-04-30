@@ -18,6 +18,85 @@ use Carbon\Carbon;
 
 class TransactionsController extends Controller
 {
+  public function creditCards(Request $request)
+  {
+    $year  = $request->input('year',  date('Y'));
+    $month = $request->input('month', date('n'));
+
+    // Workspaces do usuário para o breakdown
+    $workspaces = Auth::user()->workspaces()->where('workspaces.ativo', true)->orderBy('workspaces.nome')->get();
+
+    // Cartões do usuário
+    $cards = CreditCard::where('id_usuario', Auth::id())->orderBy('descricao')->get();
+
+    $cardData = [];
+    $totals = ['geral' => 0];
+    foreach ($workspaces as $ws) {
+      $totals[$ws->id] = 0;
+    }
+    $totals['em_aberto_empresa'] = 0;
+
+    foreach ($cards as $card) {
+      // Todas as transações do mês desse cartão (ignora workspace scope — contexto do usuário)
+      $transactions = Transaction::withoutGlobalScopes()
+        ->where('id_usuario', Auth::id())
+        ->where('id_cartao', $card->id)
+        ->whereYear('data', $year)
+        ->whereMonth('data', $month)
+        ->where('status', '!=', 'cancelado')
+        ->get();
+
+      $fatura = $transactions->sum('valor');
+
+      // Breakdown por workspace
+      $breakdown = [];
+      foreach ($workspaces as $ws) {
+        $breakdown[$ws->id] = [
+          'nome'  => $ws->nome,
+          'tipo'  => $ws->tipo,
+          'total' => $transactions->where('id_workspace', $ws->id)->sum('valor'),
+        ];
+      }
+
+      // Valor em aberto de workspaces do tipo empresa (sem data_pagamento)
+      $emAbertoEmpresa = 0;
+      foreach ($workspaces as $ws) {
+        if ($ws->tipo === 'empresa') {
+          $emAbertoEmpresa += $transactions
+            ->where('id_workspace', $ws->id)
+            ->whereNull('data_pagamento')
+            ->sum('valor');
+        }
+      }
+
+      $pago = $transactions->whereNotNull('data_pagamento')->count() > 0
+        && $transactions->whereNull('data_pagamento')->count() === 0;
+
+      $cardData[] = [
+        'card'            => $card,
+        'fatura'          => $fatura,
+        'breakdown'       => $breakdown,
+        'em_aberto_empresa' => $emAbertoEmpresa,
+        'pago'            => $pago,
+      ];
+
+      $totals['geral'] += $fatura;
+      foreach ($workspaces as $ws) {
+        $totals[$ws->id] += $breakdown[$ws->id]['total'];
+      }
+      $totals['em_aberto_empresa'] += $emAbertoEmpresa;
+    }
+
+    $currentDate = Carbon::create($year, $month, 1);
+    $prevDate    = $currentDate->copy()->subMonth();
+    $nextDate    = $currentDate->copy()->addMonth();
+
+    return view('transactions/credit_cards', compact(
+      'cardData', 'workspaces', 'totals',
+      'year', 'month', 'currentDate', 'prevDate', 'nextDate'
+    ));
+  }
+
   public function payCardBill(Request $request, $cardId, $year, $month)
   {
     $updated = Transaction::where('id_usuario', Auth::id())

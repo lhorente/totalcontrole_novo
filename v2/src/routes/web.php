@@ -55,6 +55,7 @@ Route::middleware(['auth:sanctum', 'verified', 'workspace'])->group(function () 
   Route::post('/credit_cards/store',[CreditCardsController::class, 'store']);
   Route::get('/credit_cards/remove/{id}',[CreditCardsController::class, 'remove']);
 
+  Route::get('/transactions/credit_cards',[TransactionsController::class, 'creditCards'])->name('transactions.creditCards');
   Route::get('/transactions',[TransactionsController::class, 'index'])->name('transactions.index');
   Route::get('/transactions/month/{year?}/{month?}',[TransactionsController::class, 'month'])->name('transactions.month');
   Route::get('/transactions/search',[TransactionsController::class, 'search'])->name('transactions.search');
