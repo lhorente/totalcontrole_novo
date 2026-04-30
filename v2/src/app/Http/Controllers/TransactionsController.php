@@ -27,7 +27,7 @@ class TransactionsController extends Controller
     $workspaces = Auth::user()->workspaces()->where('workspaces.ativo', true)->orderBy('workspaces.nome')->get();
 
     // Cartões do usuário
-    $cards = CreditCard::where('id_usuario', Auth::id())->orderBy('descricao')->get();
+    $cards = CreditCard::where('id_usuario', Auth::id())->where('status', 'ativo')->orderBy('descricao')->get();
 
     $cardData = [];
     $totals = ['geral' => 0];
@@ -167,6 +167,7 @@ class TransactionsController extends Controller
                            ->get();
 
     $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->where('status', 'ativo')
                           ->orderBy('descricao')
                           ->get();
 
@@ -270,6 +271,7 @@ class TransactionsController extends Controller
                            ->get();
 
     $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->where('status', 'ativo')
                           ->orderBy('descricao')
                           ->get();
 
@@ -366,6 +368,7 @@ class TransactionsController extends Controller
                            ->get();
 
     $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->where('status', 'ativo')
                           ->orderBy('descricao')
                           ->get();
 
@@ -439,6 +442,7 @@ class TransactionsController extends Controller
                            ->get();
 
     $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->where('status', 'ativo')
                           ->orderBy('descricao')
                           ->get();
 
@@ -542,7 +546,7 @@ class TransactionsController extends Controller
 
   public function import()
   {
-    $cartoes = CreditCard::where('id_usuario', Auth::id())->get();
+    $cartoes = CreditCard::where('id_usuario', Auth::id())->where('status', 'ativo')->get();
 
     return view('transactions/import', compact('cartoes'));
   }
