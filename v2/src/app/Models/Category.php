@@ -15,11 +15,11 @@ class Category extends Model
     public $table = 'categorias';
 
     static function getCategories(){
-      return self::where('id_usuario',Auth::id())->orderBy('nome')->get();
+      return self::where('id_workspace', session('active_workspace_id'))->where('status','a')->orderBy('nome')->get();
     }
 
     static function getCategory($id){
-      return self::where('id_usuario',Auth::id())->where('id',$id)->first();
+      return self::where('id_workspace', session('active_workspace_id'))->where('id', $id)->first();
     }
 
 }

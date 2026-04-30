@@ -28,6 +28,7 @@ class CategoriesController extends Controller
   public function store(StoreCategory $request){
     $category = new Category;
     $category->id_usuario = Auth::id();
+    $category->id_workspace = session('active_workspace_id');
 
     if ($request->input('id')){
       $category = Category::getCategory($request->input('id'));

@@ -161,7 +161,7 @@ class TransactionsController extends Controller
     $caixa     = $id_caixa   ? Wallet::where('id', $id_caixa)->where('id_usuario', Auth::id())->first() : null;
 
     // Load filter option lists
-    $categorias = Category::where('id_usuario', Auth::id())
+    $categorias = Category::where('id_workspace', session('active_workspace_id'))
                            ->where('status', 'a')
                            ->orderBy('nome')
                            ->get();
@@ -265,7 +265,7 @@ class TransactionsController extends Controller
     $caixa     = $id_caixa   ? Wallet::where('id', $id_caixa)->where('id_usuario', Auth::id())->first() : null;
 
     // Load filter option lists
-    $categorias = Category::where('id_usuario', Auth::id())
+    $categorias = Category::where('id_workspace', session('active_workspace_id'))
                            ->where('status', 'a')
                            ->orderBy('nome')
                            ->get();
@@ -362,7 +362,7 @@ class TransactionsController extends Controller
   }
 
   public function create(Request $request){
-    $categorias = Category::where('id_usuario', Auth::id())
+    $categorias = Category::where('id_workspace', session('active_workspace_id'))
                            ->where('status', 'a')
                            ->orderBy('nome')
                            ->get();
@@ -436,7 +436,7 @@ class TransactionsController extends Controller
                                ->with(['category', 'contact', 'wallet', 'credit_card'])
                                ->findOrFail($id);
 
-    $categorias = Category::where('id_usuario', Auth::id())
+    $categorias = Category::where('id_workspace', session('active_workspace_id'))
                            ->where('status', 'a')
                            ->orderBy('nome')
                            ->get();
@@ -610,7 +610,7 @@ class TransactionsController extends Controller
       return $transaction;
     });
 
-    $categorias = Category::where('id_usuario', Auth::id())
+    $categorias = Category::where('id_workspace', session('active_workspace_id'))
                           ->whereNull('parent_id')
                           ->where('status', 'a')
                           ->orderBy('nome')
