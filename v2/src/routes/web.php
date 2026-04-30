@@ -9,6 +9,7 @@ use App\Http\Controllers\TransactionsController;
 use App\Http\Controllers\DashboardController;
 
 use App\Http\Controllers\WorkspaceController;
+use App\Http\Controllers\SmartposImportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -73,4 +74,8 @@ Route::middleware(['auth:sanctum', 'verified', 'workspace'])->group(function () 
   Route::post('/transactions/import-store',[TransactionsController::class, 'importStore'])->name('transactions.importStore');
 
   Route::post('/workspace/switch/{id}', [WorkspaceController::class, 'switch'])->name('workspace.switch');
+
+  Route::get('/smartpos/import', [SmartposImportController::class, 'index'])->name('smartpos.import');
+  Route::post('/smartpos/import/preview', [SmartposImportController::class, 'preview'])->name('smartpos.preview');
+  Route::post('/smartpos/import/store', [SmartposImportController::class, 'store'])->name('smartpos.store');
 });

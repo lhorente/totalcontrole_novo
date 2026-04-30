@@ -13,6 +13,7 @@
 /v1/app/Config/env.php
 /vendor
 /db_data
+/v2/src/vendor
 
 # OS generated files #
 ######################

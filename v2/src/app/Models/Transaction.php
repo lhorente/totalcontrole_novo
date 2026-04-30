@@ -32,6 +32,8 @@ class Transaction extends Model
     'tipo',
     'status',
     'chave_banco',
+    'origem',
+    'id_externo',
     'id_workspace',
   ];
 

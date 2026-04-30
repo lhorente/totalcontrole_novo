@@ -50,6 +50,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
               <li><a href="{{ route('transactions.creditCards') }}" class="dropdown-item">Cartões de crédito</a></li>
               <li><a href="{{ url('/wallets/dashboard') }}" class="dropdown-item">Resumo de carteiras</a></li>
               <li><a href="{{ url('/transactions/import') }}" class="dropdown-item">Importar Tabela Cartão</a></li>
+              <li><a href="{{ route('smartpos.import') }}" class="dropdown-item">Importar Vendas SmartPOS</a></li>
             </ul>
           </li>
           <li class="nav-item dropdown">
