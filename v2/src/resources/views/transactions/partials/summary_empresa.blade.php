@@ -69,8 +69,8 @@
       <div class="row no-gutters">
 
         {{-- RECEITAS --}}
-        <div class="col-12 col-md-4 border-right">
-          <div class="px-3 pt-3 pb-1">
+        <div class="col-12 col-md-4 border-right d-flex flex-column">
+          <div class="px-3 pt-3 pb-1 flex-grow-1">
             <p class="text-uppercase text-muted font-weight-bold mb-2" style="font-size:.75rem; letter-spacing:.05em">
               <i class="fas fa-arrow-up text-success mr-1"></i> Receitas
             </p>
@@ -99,8 +99,8 @@
         </div>
 
         {{-- CUSTOS --}}
-        <div class="col-12 col-md-4 border-right">
-          <div class="px-3 pt-3 pb-1">
+        <div class="col-12 col-md-4 border-right d-flex flex-column">
+          <div class="px-3 pt-3 pb-1 flex-grow-1">
             <p class="text-uppercase text-muted font-weight-bold mb-2" style="font-size:.75rem; letter-spacing:.05em">
               <i class="fas fa-arrow-down text-danger mr-1"></i> Custos
             </p>
@@ -129,8 +129,8 @@
         </div>
 
         {{-- RESULTADO --}}
-        <div class="col-12 col-md-4">
-          <div class="px-3 pt-3 pb-1">
+        <div class="col-12 col-md-4 d-flex flex-column">
+          <div class="px-3 pt-3 pb-1 flex-grow-1">
             <p class="text-uppercase text-muted font-weight-bold mb-2" style="font-size:.75rem; letter-spacing:.05em">
               <i class="fas fa-balance-scale mr-1"></i> Resultado
             </p>
