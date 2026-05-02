@@ -224,6 +224,7 @@ class TransactionsController extends Controller
     $beforeMonthObj->sub(new \DateInterval('P1M'));
 
     $nav_route = 'transactions.month';
+    $activeWorkspace = Workspace::find(session('active_workspace_id'));
 
     return view('transactions/month', compact(
       'transactions',
@@ -244,7 +245,8 @@ class TransactionsController extends Controller
       'total_pago',
       'total_a_receber',
       'total_recebido',
-      'nav_route'
+      'nav_route',
+      'activeWorkspace'
     ));
   }
 
