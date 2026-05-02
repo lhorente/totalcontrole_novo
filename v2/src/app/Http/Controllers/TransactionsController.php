@@ -542,6 +542,25 @@ class TransactionsController extends Controller
       ->with('success', 'Lançamento atualizado com sucesso.');
   }
 
+  public function bulkUpdate(Request $request){
+    $request->validate([
+      'ids'   => 'required|array|min:1',
+      'ids.*' => 'integer',
+      'field' => 'required|in:id_categoria',
+      'value' => 'nullable|integer',
+    ]);
+
+    $ids   = $request->input('ids');
+    $field = $request->input('field');
+    $value = $request->input('value') ?: null;
+
+    $count = Transaction::whereIn('id', $ids)
+      ->where('id_usuario', Auth::id())
+      ->update([$field => $value]);
+
+    return redirect()->back()->with('success', $count . ' lançamento(s) atualizados com sucesso.');
+  }
+
   public function saveModal(Request $request){
     return view('transactions/modal_save');
   }

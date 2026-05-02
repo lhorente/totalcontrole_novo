@@ -174,6 +174,30 @@
           </div>
         </div>
 
+        {{-- Bulk action toolbar (shown when rows are selected) --}}
+        <div id="bulk-toolbar" style="display:none" class="card card-body py-2 px-3 mb-2 bg-light border">
+          <div class="d-flex align-items-center flex-wrap">
+            <span class="mr-3"><strong id="bulk-count">0</strong> selecionado(s)</span>
+            <form id="bulk-form" method="POST" action="{{ route('transactions.bulkUpdate') }}" class="d-flex align-items-center mr-3">
+              @csrf
+              <input type="hidden" name="field" value="id_categoria">
+              <label class="mb-0 mr-2 text-nowrap">Categoria:</label>
+              <select name="value" class="form-control form-control-sm mr-2" style="width:200px">
+                <option value="">— Sem categoria —</option>
+                @foreach ($categorias as $cat)
+                  <option value="{{ $cat->id }}">{{ $cat->nome }}</option>
+                @endforeach
+              </select>
+              <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                <i class="fa fa-check"></i> Aplicar
+              </button>
+            </form>
+            <button type="button" class="btn btn-sm btn-outline-secondary ml-auto" id="bulk-clear">
+              <i class="fa fa-times"></i> Cancelar seleção
+            </button>
+          </div>
+        </div>
+
         {{-- TABLE VIEW --}}
         <div id="view-table">
           @if ($transactions->count() > 0)
@@ -182,6 +206,9 @@
               <table class="table table-sm table-hover mb-0">
                 <thead>
                   <tr>
+                    <th style="width:35px" class="text-center">
+                      <input type="checkbox" id="cb-select-all" title="Selecionar todos">
+                    </th>
                     <th class="d-none d-sm-table-cell th-sortable" style="width:90px; cursor:pointer; user-select:none" data-sort-key="data" data-sort-type="text">
                       Data <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
                     </th>
@@ -213,7 +240,7 @@
                     $tipoBadge  = ['despesa'=>'danger','lucro'=>'success','transferencia'=>'secondary','emprestimo'=>'warning','pagamento_emprestimo'=>'success'];
                   @endphp
                   <tr style="cursor:pointer"
-                      onclick="window.location='/transactions/view/{{ $transaction->id }}?_back={{ urlencode(request()->fullUrl()) }}'"
+                      onclick="bulkRowClick(event, '{{ $transaction->id }}', '/transactions/view/{{ $transaction->id }}?_back={{ urlencode(request()->fullUrl()) }}')"
                       data-sort-data="{{ $transaction->data->format('Y-m-d') }}"
                       data-sort-descricao="{{ $transaction->descricao ?: $transaction->descricao_banco }}"
                       data-sort-categoria="{{ optional($transaction->category)->nome ?? '' }}"
@@ -221,6 +248,9 @@
                       data-sort-cartao="{{ optional($transaction->credit_card)->descricao ?? '' }}"
                       data-sort-pessoa="{{ optional($transaction->contact)->nome ?? '' }}"
                       data-sort-valor="{{ $transaction->valor }}">
+                    <td onclick="event.stopPropagation()" class="text-center" style="width:35px">
+                      <input type="checkbox" class="cb-row" data-id="{{ $transaction->id }}">
+                    </td>
                     <td class="text-nowrap d-none d-sm-table-cell">{{ $transaction->data->format('d/m/Y') }}</td>
                     <td>
                       @if ($transaction->category)
@@ -357,6 +387,87 @@
 
 <script>
 (function () {
+  // ── Bulk selection ────────────────────────────────────────────────────────
+  var selectedIds = new Set();
+
+  function updateBulkToolbar() {
+    var toolbar  = document.getElementById('bulk-toolbar');
+    var countEl  = document.getElementById('bulk-count');
+    var headerCb = document.getElementById('cb-select-all');
+    var allCbs   = document.querySelectorAll('.cb-row');
+
+    countEl.textContent   = selectedIds.size;
+    toolbar.style.display = selectedIds.size > 0 ? '' : 'none';
+
+    if (headerCb) {
+      var checkedCount = document.querySelectorAll('.cb-row:checked').length;
+      headerCb.indeterminate = checkedCount > 0 && checkedCount < allCbs.length;
+      headerCb.checked       = allCbs.length > 0 && checkedCount === allCbs.length;
+    }
+  }
+
+  document.querySelectorAll('.cb-row').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      var id = this.dataset.id;
+      if (this.checked) {
+        selectedIds.add(id);
+        this.closest('tr').classList.add('table-active');
+      } else {
+        selectedIds.delete(id);
+        this.closest('tr').classList.remove('table-active');
+      }
+      updateBulkToolbar();
+    });
+  });
+
+  var headerCb = document.getElementById('cb-select-all');
+  if (headerCb) {
+    headerCb.addEventListener('change', function () {
+      document.querySelectorAll('.cb-row').forEach(function (cb) {
+        cb.checked = headerCb.checked;
+        var id = cb.dataset.id;
+        if (headerCb.checked) {
+          selectedIds.add(id);
+          cb.closest('tr').classList.add('table-active');
+        } else {
+          selectedIds.delete(id);
+          cb.closest('tr').classList.remove('table-active');
+        }
+      });
+      updateBulkToolbar();
+    });
+  }
+
+  document.getElementById('bulk-clear').addEventListener('click', function () {
+    selectedIds.clear();
+    document.querySelectorAll('.cb-row').forEach(function (cb) {
+      cb.checked = false;
+      cb.closest('tr').classList.remove('table-active');
+    });
+    if (headerCb) { headerCb.checked = false; headerCb.indeterminate = false; }
+    updateBulkToolbar();
+  });
+
+  document.getElementById('bulk-form').addEventListener('submit', function (e) {
+    if (selectedIds.size === 0) { e.preventDefault(); return; }
+    this.querySelectorAll('input[name="ids[]"]').forEach(function (el) { el.remove(); });
+    var form = this;
+    selectedIds.forEach(function (id) {
+      var input   = document.createElement('input');
+      input.type  = 'hidden';
+      input.name  = 'ids[]';
+      input.value = id;
+      form.appendChild(input);
+    });
+  });
+
+  // Row click that skips navigation when a checkbox is toggled directly
+  window.bulkRowClick = function (event, id, url) {
+    // If the click originated from the checkbox <td>, do nothing (stopPropagation handles it)
+    window.location = url;
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   // ── Table sorting ────────────────────────────────────────────────────────
   var sortState = { key: null, dir: 1 };
 
