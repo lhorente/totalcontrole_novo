@@ -209,8 +209,8 @@
                     <th style="width:35px" class="text-center">
                       <input type="checkbox" id="cb-select-all" title="Selecionar todos">
                     </th>
-                    <th class="d-none d-sm-table-cell th-sortable" style="width:90px; cursor:pointer; user-select:none" data-sort-key="data" data-sort-type="text">
-                      Data <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    <th class="d-none d-sm-table-cell th-sortable" style="width:60px; cursor:pointer; user-select:none" data-sort-key="data" data-sort-type="text">
+                      Dia <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
                     </th>
                     <th class="th-sortable" style="cursor:pointer; user-select:none" data-sort-key="descricao" data-sort-type="text">
                       Descrição <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
@@ -224,16 +224,18 @@
                     <th class="d-none d-md-table-cell th-sortable" style="width:120px; cursor:pointer; user-select:none" data-sort-key="cartao" data-sort-type="text">
                       Cartão <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
                     </th>
+                    @if (optional($activeWorkspace)->tipo != 'empresa')
                     <th class="d-none d-md-table-cell th-sortable" style="width:120px; cursor:pointer; user-select:none" data-sort-key="pessoa" data-sort-type="text">
                       Pessoa <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
                     </th>
+                    @endif
                     <th class="text-right th-sortable" style="width:100px; cursor:pointer; user-select:none" data-sort-key="valor" data-sort-type="number">
                       Valor <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
                     </th>
-                    <th class="text-right d-none d-sm-table-cell" style="width:110px">Pagamento</th>
+                    <th class="text-right d-none d-sm-table-cell" style="width:70px">Pgto.</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody> 
                   @foreach ($transactions as $transaction)
                   @php
                     $tipoLabels = ['despesa'=>'Despesa','lucro'=>'Receita','transferencia'=>'Transferência','emprestimo'=>'Empréstimo','pagamento_emprestimo'=>'Pgto. Empréstimo'];
@@ -251,7 +253,7 @@
                     <td onclick="event.stopPropagation()" class="text-center" style="width:35px">
                       <input type="checkbox" class="cb-row" data-id="{{ $transaction->id }}">
                     </td>
-                    <td class="text-nowrap d-none d-sm-table-cell">{{ $transaction->data->format('d/m/Y') }}</td>
+                    <td class="text-nowrap d-none d-sm-table-cell">{{ $transaction->data->format('d') }}</td>
                     <td>
                       @if ($transaction->category)
                         <i class="{{ $transaction->category->icon_class }} text-muted mr-1" style="font-size:.8em"></i>
@@ -275,9 +277,9 @@
                         @endif
                         <br>
                         @if ($transaction->data_pagamento)
-                          <span class="text-success"><i class="fa fa-check"></i> Pago {{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m') }}</span>
+                          <span class="text-success"><i class="fa fa-check" label="Pago {{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m') }}"></i></span>
                         @else
-                          <span class="text-danger"><i class="fa fa-clock"></i> Pendente</span>
+                          <span class="text-danger"><i class="fa fa-clock"></i> </span>
                         @endif
                       </div>
                     </td>
@@ -296,6 +298,7 @@
                         —
                       @endif
                     </td>
+                    @if (optional($activeWorkspace)->tipo != 'empresa')
                     <td class="d-none d-md-table-cell">
                       @if ($transaction->contact)
                         <i class="fa fa-user fa-xs text-muted"></i> {{ $transaction->contact->nome }}
@@ -303,14 +306,15 @@
                         —
                       @endif
                     </td>
+                    @endif
                     <td class="text-right font-weight-bold text-nowrap">
                       R$ {{ number_format($transaction->valor, 2, ',', '.') }}
                     </td>
                     <td class="text-right d-none d-sm-table-cell text-nowrap">
                       @if ($transaction->data_pagamento)
-                        <span class="text-success"><i class="fa fa-check"></i> {{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m/Y') }}</span>
+                        <span class="text-success"><i class="fa fa-check" label="{{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m/Y') }}"></i> </span>
                       @else
-                        <span class="text-danger"><i class="fa fa-clock"></i> Pendente</span>
+                        <span class="text-danger"><i class="fa fa-clock" label="Pendente"></i> </span>
                       @endif
                     </td>
                   </tr>
