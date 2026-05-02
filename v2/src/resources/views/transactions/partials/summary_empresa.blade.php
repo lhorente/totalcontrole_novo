@@ -10,8 +10,8 @@
   $qtdVendas    = $dreReceitas->count();
   $ticketMedio  = $qtdVendas > 0 ? $totalReceita / $qtdVendas : 0;
 
-  $receitasPorCategoria = $dreReceitas->groupBy('id_categoria');
-  $custosPorCategoria   = $dreCustos->groupBy('id_categoria');
+  $receitasPorCategoria = $dreReceitas->groupBy('id_categoria')->sortByDesc(fn($g) => $g->sum('valor'));
+  $custosPorCategoria   = $dreCustos->groupBy('id_categoria')->sortByDesc(fn($g) => $g->sum('valor'));
 @endphp
 
 {{-- Active filter badges --}}
