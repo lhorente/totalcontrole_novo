@@ -38,7 +38,7 @@ class TransactionsController extends Controller
 
     foreach ($cards as $card) {
       // Todas as transações do mês desse cartão (ignora workspace scope — contexto do usuário)
-      $transactions = Transaction::withoutGlobalScopes()
+      $transactions = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
         ->where('id_usuario', Auth::id())
         ->where('id_cartao', $card->id)
         ->whereYear('data', $year)
@@ -451,7 +451,7 @@ class TransactionsController extends Controller
   }
 
   public function view($id){
-    $transaction = Transaction::withoutGlobalScopes()
+    $transaction = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                ->where('id_usuario', Auth::id())
                                ->with(['category', 'contact', 'wallet', 'credit_card', 'workspace'])
                                ->findOrFail($id);
@@ -529,7 +529,7 @@ class TransactionsController extends Controller
   }
 
   public function edit($id){
-    $transaction = Transaction::withoutGlobalScopes()
+    $transaction = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                ->where('id_usuario', Auth::id())
                                ->with(['category', 'contact', 'wallet', 'credit_card'])
                                ->findOrFail($id);
@@ -688,14 +688,14 @@ class TransactionsController extends Controller
       $chaveBanco = $dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura;
       
       // Verifica se já existe pela chave_banco
-      $isDuplicada = Transaction::withoutGlobalScopes()
+      $isDuplicada = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                   ->where('chave_banco', $chaveBanco)
                                   ->where('id_usuario', Auth::id())
                                   ->exists();
 
       // Verifica se existe transação com mesmo valor, mesmo cartão, no mesmo mês
       $valorArredondado = round($valor, 2);
-      $transacaoSimilar = !$isDuplicada ? Transaction::withoutGlobalScopes()
+      $transacaoSimilar = !$isDuplicada ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                   ->where('id_usuario', Auth::id())
                                   ->where('id_cartao', $idCartao)
                                   ->whereRaw('ROUND(valor, 2) = ?', [$valorArredondado])
@@ -706,7 +706,7 @@ class TransactionsController extends Controller
 
       // Verifica se existe transação com valor próximo (desconsiderando centavos), mesmo cartão, no mesmo mês
       $valorInteiro = (int) floor(abs($valor));
-      $transacaoSimilarAproximada = (!$isDuplicada && !$isDuplicadaPorValor) ? Transaction::withoutGlobalScopes()
+      $transacaoSimilarAproximada = (!$isDuplicada && !$isDuplicadaPorValor) ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                   ->where('id_usuario', Auth::id())
                                   ->where('id_cartao', $idCartao)
                                   ->whereRaw('FLOOR(ABS(valor)) = ?', [$valorInteiro])
@@ -761,14 +761,14 @@ class TransactionsController extends Controller
         // Chave futura (sem data_banco pois é gerada, não vem do CSV)
         $futureChave = '' . '|' . $futureDesc . '|' . $futureVal . '|' . $futureDate->format('Y-m-d');
 
-        $futureDupChave = Transaction::withoutGlobalScopes()
+        $futureDupChave = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                      ->where('chave_banco', $futureChave)
                                      ->where('id_usuario', Auth::id())
                                      ->exists();
 
         $futureValArredondado = round($futureVal, 2);
         $futureSimilar = !$futureDupChave
-          ? Transaction::withoutGlobalScopes()
+          ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
               ->where('id_usuario', Auth::id())
               ->where('id_cartao', $idCartao)
               ->whereRaw('ROUND(valor, 2) = ?', [$futureValArredondado])
@@ -780,7 +780,7 @@ class TransactionsController extends Controller
 
         $futureValInteiro = (int) floor(abs($futureVal));
         $futureSimilarAprox = (!$futureDupChave && !$futureDupValor)
-          ? Transaction::withoutGlobalScopes()
+          ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
               ->where('id_usuario', Auth::id())
               ->where('id_cartao', $idCartao)
               ->whereRaw('FLOOR(ABS(valor)) = ?', [$futureValInteiro])
@@ -873,7 +873,7 @@ class TransactionsController extends Controller
         }
 
         // Verifica se já existe uma transação com essa chave
-        $existe = Transaction::withoutGlobalScopes()
+        $existe = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                              ->where('chave_banco', $chaveBanco)
                              ->where('id_usuario', Auth::id())
                              ->exists();
