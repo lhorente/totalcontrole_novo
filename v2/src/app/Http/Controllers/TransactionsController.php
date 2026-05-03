@@ -104,7 +104,7 @@ class TransactionsController extends Controller
 
     $card = CreditCard::where('id', $cardId)->where('id_usuario', Auth::id())->firstOrFail();
 
-    $transactions = Transaction::withoutGlobalScopes()
+    $transactions = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
       ->where('id_usuario', Auth::id())
       ->where('id_cartao', $cardId)
       ->where('status', '!=', 'cancelado')
@@ -554,7 +554,7 @@ class TransactionsController extends Controller
   }
 
   public function update(Request $request, $id){
-    $transaction = Transaction::withoutGlobalScopes()->where('id_usuario', Auth::id())->findOrFail($id);
+    $transaction = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)->where('id_usuario', Auth::id())->findOrFail($id);
 
     $request->validate([
       'descricao'      => 'nullable|string|max:255',
@@ -604,7 +604,7 @@ class TransactionsController extends Controller
   }
 
   public function destroy(Request $request, $id){
-    $transaction = Transaction::withoutGlobalScopes()->where('id_usuario', Auth::id())->findOrFail($id);
+    $transaction = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)->where('id_usuario', Auth::id())->findOrFail($id);
     $transaction->delete();
 
     $backUrl = $request->input('_back');
@@ -613,7 +613,7 @@ class TransactionsController extends Controller
   }
 
   public function quickUpdate(Request $request, $id){
-    $transaction = Transaction::withoutGlobalScopes()->where('id_usuario', Auth::id())->findOrFail($id);
+    $transaction = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)->where('id_usuario', Auth::id())->findOrFail($id);
 
     $field = $request->input('field');
     $allowed = ['data_pagamento', 'data_recebimento'];
