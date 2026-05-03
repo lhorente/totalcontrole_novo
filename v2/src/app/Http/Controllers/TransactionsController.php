@@ -554,7 +554,7 @@ class TransactionsController extends Controller
   }
 
   public function update(Request $request, $id){
-    $transaction = Transaction::findOrFail($id);
+    $transaction = Transaction::withoutGlobalScopes()->where('id_usuario', Auth::id())->findOrFail($id);
 
     $request->validate([
       'descricao'      => 'nullable|string|max:255',
@@ -604,7 +604,7 @@ class TransactionsController extends Controller
   }
 
   public function destroy(Request $request, $id){
-    $transaction = Transaction::findOrFail($id);
+    $transaction = Transaction::withoutGlobalScopes()->where('id_usuario', Auth::id())->findOrFail($id);
     $transaction->delete();
 
     $backUrl = $request->input('_back');
@@ -613,7 +613,7 @@ class TransactionsController extends Controller
   }
 
   public function quickUpdate(Request $request, $id){
-    $transaction = Transaction::findOrFail($id);
+    $transaction = Transaction::withoutGlobalScopes()->where('id_usuario', Auth::id())->findOrFail($id);
 
     $field = $request->input('field');
     $allowed = ['data_pagamento', 'data_recebimento'];
