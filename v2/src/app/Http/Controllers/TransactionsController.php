@@ -592,13 +592,15 @@ class TransactionsController extends Controller
       $chaveBanco = $dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura;
       
       // Verifica se já existe pela chave_banco
-      $isDuplicada = Transaction::where('chave_banco', $chaveBanco)
+      $isDuplicada = Transaction::withoutGlobalScopes()
+                                  ->where('chave_banco', $chaveBanco)
                                   ->where('id_usuario', Auth::id())
                                   ->exists();
 
       // Verifica se existe transação com mesmo valor, mesmo cartão, no mesmo mês
       $valorArredondado = round($valor, 2);
-      $transacaoSimilar = !$isDuplicada ? Transaction::where('id_usuario', Auth::id())
+      $transacaoSimilar = !$isDuplicada ? Transaction::withoutGlobalScopes()
+                                  ->where('id_usuario', Auth::id())
                                   ->where('id_cartao', $idCartao)
                                   ->whereRaw('ROUND(valor, 2) = ?', [$valorArredondado])
                                   ->whereYear('data', $dataFaturaCarbon->year)
@@ -608,7 +610,8 @@ class TransactionsController extends Controller
 
       // Verifica se existe transação com valor próximo (desconsiderando centavos), mesmo cartão, no mesmo mês
       $valorInteiro = (int) floor(abs($valor));
-      $transacaoSimilarAproximada = (!$isDuplicada && !$isDuplicadaPorValor) ? Transaction::where('id_usuario', Auth::id())
+      $transacaoSimilarAproximada = (!$isDuplicada && !$isDuplicadaPorValor) ? Transaction::withoutGlobalScopes()
+                                  ->where('id_usuario', Auth::id())
                                   ->where('id_cartao', $idCartao)
                                   ->whereRaw('FLOOR(ABS(valor)) = ?', [$valorInteiro])
                                   ->whereYear('data', $dataFaturaCarbon->year)
@@ -662,13 +665,15 @@ class TransactionsController extends Controller
         // Chave futura (sem data_banco pois é gerada, não vem do CSV)
         $futureChave = '' . '|' . $futureDesc . '|' . $futureVal . '|' . $futureDate->format('Y-m-d');
 
-        $futureDupChave = Transaction::where('chave_banco', $futureChave)
+        $futureDupChave = Transaction::withoutGlobalScopes()
+                                     ->where('chave_banco', $futureChave)
                                      ->where('id_usuario', Auth::id())
                                      ->exists();
 
         $futureValArredondado = round($futureVal, 2);
         $futureSimilar = !$futureDupChave
-          ? Transaction::where('id_usuario', Auth::id())
+          ? Transaction::withoutGlobalScopes()
+              ->where('id_usuario', Auth::id())
               ->where('id_cartao', $idCartao)
               ->whereRaw('ROUND(valor, 2) = ?', [$futureValArredondado])
               ->whereYear('data', $futureDate->year)
@@ -679,7 +684,8 @@ class TransactionsController extends Controller
 
         $futureValInteiro = (int) floor(abs($futureVal));
         $futureSimilarAprox = (!$futureDupChave && !$futureDupValor)
-          ? Transaction::where('id_usuario', Auth::id())
+          ? Transaction::withoutGlobalScopes()
+              ->where('id_usuario', Auth::id())
               ->where('id_cartao', $idCartao)
               ->whereRaw('FLOOR(ABS(valor)) = ?', [$futureValInteiro])
               ->whereYear('data', $futureDate->year)
@@ -771,7 +777,8 @@ class TransactionsController extends Controller
         }
 
         // Verifica se já existe uma transação com essa chave
-        $existe = Transaction::where('chave_banco', $chaveBanco)
+        $existe = Transaction::withoutGlobalScopes()
+                             ->where('chave_banco', $chaveBanco)
                              ->where('id_usuario', Auth::id())
                              ->exists();
 
