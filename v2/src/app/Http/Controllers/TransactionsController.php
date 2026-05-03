@@ -97,6 +97,102 @@ class TransactionsController extends Controller
     ));
   }
 
+  public function cardTransactions(Request $request, $cardId, $year = null, $month = null)
+  {
+    $year  = $year  ?? date('Y');
+    $month = $month ?? date('n');
+
+    $card = CreditCard::where('id', $cardId)->where('id_usuario', Auth::id())->firstOrFail();
+
+    $transactions = Transaction::withoutGlobalScopes()
+      ->where('id_usuario', Auth::id())
+      ->where('id_cartao', $cardId)
+      ->where('status', '!=', 'cancelado')
+      ->whereYear('data', $year)
+      ->whereMonth('data', $month)
+      ->with(['category', 'contact', 'wallet', 'credit_card'])
+      ->orderBy('data_pagamento', 'asc')
+      ->orderBy('data', 'asc')
+      ->get();
+
+    $total_a_pagar   = $transactions->where('tipo', 'despesa')->whereNull('data_pagamento')->sum('valor');
+    $total_pago      = $transactions->where('tipo', 'despesa')->whereNotNull('data_pagamento')->sum('valor');
+    $total_a_receber = $transactions->where('tipo', 'lucro')->whereNull('data_pagamento')->sum('valor');
+    $total_recebido  = $transactions->where('tipo', 'lucro')->whereNotNull('data_pagamento')->sum('valor');
+
+    $currentDateObj = new \DateTime;
+    $currentDateObj->setDate($year, $month, 1);
+    $currentDateObj->setTime(0, 0);
+
+    $nextMonthObj = clone $currentDateObj;
+    $nextMonthObj->add(new \DateInterval('P1M'));
+
+    $beforeMonthObj = clone $currentDateObj;
+    $beforeMonthObj->sub(new \DateInterval('P1M'));
+
+    $prevUrl = route('transactions.cardTransactions', [
+      'cardId' => $cardId,
+      'year'   => $beforeMonthObj->format('Y'),
+      'month'  => (int) $beforeMonthObj->format('m'),
+    ]);
+    $nextUrl = route('transactions.cardTransactions', [
+      'cardId' => $cardId,
+      'year'   => $nextMonthObj->format('Y'),
+      'month'  => (int) $nextMonthObj->format('m'),
+    ]);
+
+    $categorias = Category::where('id_workspace', session('active_workspace_id'))
+                           ->where('status', 'a')
+                           ->orderBy('nome')
+                           ->get();
+
+    $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->where('status', 'ativo')
+                          ->orderBy('descricao')
+                          ->get();
+
+    $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->orderBy('nome')
+                       ->get();
+
+    $caixas = Wallet::where('id_usuario', Auth::id())
+                     ->orderBy('titulo')
+                     ->get();
+
+    $type      = null;
+    $categoria = null;
+    $cartao    = $card;
+    $pessoa    = null;
+    $caixa     = null;
+    $nav_route    = 'transactions.month';
+    $activeWorkspace = Workspace::find(session('active_workspace_id'));
+
+    return view('transactions/month', compact(
+      'transactions',
+      'nextMonthObj',
+      'beforeMonthObj',
+      'year',
+      'month',
+      'type',
+      'categoria',
+      'categorias',
+      'cartao',
+      'cartoes',
+      'pessoa',
+      'pessoas',
+      'caixa',
+      'caixas',
+      'total_a_pagar',
+      'total_pago',
+      'total_a_receber',
+      'total_recebido',
+      'nav_route',
+      'activeWorkspace',
+      'prevUrl',
+      'nextUrl'
+    ));
+  }
+
   public function payCardBill(Request $request, $cardId, $year, $month)
   {
     $updated = Transaction::where('id_usuario', Auth::id())

@@ -147,7 +147,7 @@
           </div>
 
           <div class="card-footer py-2 text-right">
-            <a href="{{ route('transactions.month', ['year' => $year, 'month' => $month]) }}?cartao={{ $card->id }}"
+            <a href="{{ route('transactions.cardTransactions', ['cardId' => $card->id, 'year' => $year, 'month' => $month]) }}"
                class="btn btn-sm btn-outline-secondary">
               <i class="fa fa-chevron-down mr-1"></i> Ver lançamentos
             </a>
