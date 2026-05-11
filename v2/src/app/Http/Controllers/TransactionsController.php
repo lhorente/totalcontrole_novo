@@ -657,6 +657,47 @@ class TransactionsController extends Controller
     return redirect()->back()->with('success', $count . ' lançamento(s) atualizados com sucesso.');
   }
 
+  public function storeModal(Request $request)
+  {
+    $request->validate([
+      'descricao'      => 'nullable|string|max:255',
+      'valor'          => 'required|numeric|min:0',
+      'data'           => 'required|date',
+      'tipo'           => 'required|in:despesa,lucro,transferencia,investimento,emprestimo,pagamento_emprestimo',
+      'id_categoria'   => 'nullable|integer',
+      'id_cartao'      => 'nullable|integer',
+      'id_cliente'     => 'nullable|integer',
+      'data_pagamento' => 'nullable|date',
+    ]);
+
+    $workspaceId = session('active_workspace_id');
+    abort_unless(
+      Auth::user()->workspaces()->where('workspaces.id', $workspaceId)->where('workspaces.ativo', true)->exists(),
+      403,
+      'Workspace inválido ou sem permissão.'
+    );
+
+    $idCaixa = Wallet::where('id_usuario', Auth::id())->where('exibir_no_saldo', 1)->value('id');
+
+    Transaction::create([
+      'id_usuario'     => Auth::id(),
+      'id_workspace'   => $workspaceId,
+      'descricao'      => $request->input('descricao'),
+      'valor'          => $request->input('valor'),
+      'data'           => $request->input('data'),
+      'tipo'           => $request->input('tipo'),
+      'id_categoria'   => $request->input('id_categoria') ?: null,
+      'id_caixa'       => $idCaixa,
+      'id_cartao'      => $request->input('id_cartao') ?: null,
+      'id_cliente'     => $request->input('id_cliente') ?: null,
+      'data_pagamento' => $request->input('data_pagamento') ?: null,
+      'status'         => 'disponivel',
+    ]);
+
+    $backUrl = $request->input('_back', route('transactions.month'));
+    return redirect($backUrl)->with('success', 'Lançamento criado com sucesso.');
+  }
+
   public function modalUpdate(Request $request, $id)
   {
     $transaction = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)

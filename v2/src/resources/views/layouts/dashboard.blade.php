@@ -142,7 +142,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
 
     @yield('content')
 
-    <a id="open-modal-transacions-save-OLD" href="{{ url('/transactions/new') }}" class="btn btn-primary back-to-top" role="button" aria-label="Scroll to top">
+    <a id="btn-novo-lancamento" href="{{ url('/transactions/new') }}" class="btn btn-primary back-to-top" role="button" aria-label="Novo lançamento">
       <i class="fas fa-plus"></i> Novo lançamento
     </a>
   </div>

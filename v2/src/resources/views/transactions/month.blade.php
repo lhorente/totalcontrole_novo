@@ -418,6 +418,7 @@
 </div>{{-- /.content --}}
 
 @include('transactions.partials.modal_edit')
+@include('transactions.partials.modal_create')
 
 <script>
 // ── Quick Edit Modal ──────────────────────────────────────────────────────────
@@ -442,7 +443,7 @@ function metOpenModal(el) {
 
   var catId = d.idCategoria || '';
   document.getElementById('met-id-categoria').value = catId;
-  document.querySelectorAll('.met-quick-btn').forEach(function (qb) {
+  document.querySelectorAll('#modal-edit-transaction .met-quick-btn').forEach(function (qb) {
     qb.classList.toggle('active', qb.dataset.value === catId);
   });
 
@@ -463,10 +464,10 @@ function metFmtDate(ymd) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  // Category quick buttons
-  document.querySelectorAll('.met-quick-btn').forEach(function (btn) {
+  // Edit modal — category quick buttons (scoped to edit modal)
+  document.querySelectorAll('#modal-edit-transaction .met-quick-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      document.querySelectorAll('.met-quick-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('#modal-edit-transaction .met-quick-btn').forEach(function (b) { b.classList.remove('active'); });
       this.classList.add('active');
       document.getElementById('met-id-categoria').value = this.dataset.value;
     });
@@ -493,6 +494,68 @@ document.addEventListener('DOMContentLoaded', function () {
     if (confirm('Tem certeza que deseja excluir o lançamento ' + subtitle.split('•')[0].trim() + '? Esta ação não pode ser desfeita.')) {
       document.getElementById('form-met-delete').submit();
     }
+  });
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Create Modal ──────────────────────────────────────────────────────────────
+function metOpenCreateModal() {
+  var today = new Date().toISOString().split('T')[0];
+
+  document.getElementById('mcr-descricao').value      = '';
+  document.getElementById('mcr-valor').value          = '';
+  document.getElementById('mcr-data').value           = today;
+  document.getElementById('mcr-tipo').value           = 'despesa';
+  document.getElementById('mcr-id-cartao').value      = '';
+  document.getElementById('mcr-id-cliente').value     = '';
+  document.getElementById('mcr-data-pagamento').value = '';
+  document.getElementById('mcr-marcar-pago').checked  = false;
+  document.getElementById('mcr-id-categoria').value   = '';
+
+  document.querySelectorAll('#mcr-quick-buttons .met-quick-btn').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.value === '');
+  });
+
+  $('#modal-create-transaction').modal('show');
+
+  // Focus on description field after modal opens
+  $('#modal-create-transaction').one('shown.bs.modal', function () {
+    document.getElementById('mcr-descricao').focus();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  // Intercept floating "Novo lançamento" button
+  var btnNovo = document.getElementById('btn-novo-lancamento');
+  if (btnNovo) {
+    btnNovo.addEventListener('click', function (e) {
+      e.preventDefault();
+      metOpenCreateModal();
+    });
+  }
+
+  // Create modal — category quick buttons
+  document.querySelectorAll('#mcr-quick-buttons .met-quick-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('#mcr-quick-buttons .met-quick-btn').forEach(function (b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      document.getElementById('mcr-id-categoria').value = this.dataset.value;
+    });
+  });
+
+  // Create modal — "Marcar como pago" checkbox
+  document.getElementById('mcr-marcar-pago').addEventListener('change', function () {
+    var pgto = document.getElementById('mcr-data-pagamento');
+    if (this.checked && !pgto.value) {
+      pgto.value = new Date().toISOString().split('T')[0];
+    } else if (!this.checked) {
+      pgto.value = '';
+    }
+  });
+
+  // Create modal — sync checkbox when date is changed directly
+  document.getElementById('mcr-data-pagamento').addEventListener('change', function () {
+    document.getElementById('mcr-marcar-pago').checked = this.value !== '';
   });
 });
 // ─────────────────────────────────────────────────────────────────────────────

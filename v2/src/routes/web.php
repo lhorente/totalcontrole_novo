@@ -69,6 +69,7 @@ Route::middleware(['auth:sanctum', 'verified', 'workspace'])->group(function () 
   Route::delete('/transactions/{id}',[TransactionsController::class, 'destroy'])->name('transactions.destroy');
   Route::post('/transactions/quick-update/{id}',[TransactionsController::class, 'quickUpdate'])->name('transactions.quickUpdate');
   Route::post('/transactions/modal-update/{id}',[TransactionsController::class, 'modalUpdate'])->name('transactions.modalUpdate');
+  Route::post('/transactions/modal-store',[TransactionsController::class, 'storeModal'])->name('transactions.storeModal');
   Route::post('/transactions/bulk-update',[TransactionsController::class, 'bulkUpdate'])->name('transactions.bulkUpdate');
   Route::post('/transactions/pay-card-bill/{cardId}/{year}/{month}',[TransactionsController::class, 'payCardBill'])->name('transactions.payCardBill');
   Route::get('/transactions/modal_save',[TransactionsController::class, 'saveModal']);
