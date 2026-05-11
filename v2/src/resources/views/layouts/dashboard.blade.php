@@ -22,6 +22,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
   <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
 
   <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+  @stack('styles')
 </head>
 <body class="hold-transition layout-top-nav">
 <div class="wrapper">

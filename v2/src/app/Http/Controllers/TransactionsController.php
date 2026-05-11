@@ -657,6 +657,54 @@ class TransactionsController extends Controller
     return redirect()->back()->with('success', $count . ' lançamento(s) atualizados com sucesso.');
   }
 
+  public function modalUpdate(Request $request, $id)
+  {
+    $transaction = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
+                               ->where('id_usuario', Auth::id())
+                               ->findOrFail($id);
+
+    $request->validate([
+      'descricao'        => 'nullable|string|max:255',
+      'valor'            => 'required|numeric|min:0',
+      'data'             => 'required|date',
+      'tipo'             => 'required|in:despesa,lucro,transferencia,investimento,emprestimo,pagamento_emprestimo',
+      'id_categoria'     => 'nullable|integer',
+      'id_cartao'        => 'nullable|integer',
+      'id_cliente'       => 'nullable|integer',
+      'id_workspace'     => 'required|integer',
+      'data_pagamento'   => 'nullable|date',
+      'data_recebimento' => 'nullable|date',
+    ]);
+
+    $newWorkspaceId = $request->input('id_workspace');
+    abort_unless(
+      Auth::user()->workspaces()->where('workspaces.id', $newWorkspaceId)->where('workspaces.ativo', true)->exists(),
+      403,
+      'Workspace inválido ou sem permissão.'
+    );
+
+    $idCaixa = Wallet::where('id_usuario', Auth::id())->where('exibir_no_saldo', 1)->value('id');
+
+    $transaction->descricao        = $request->input('descricao');
+    $transaction->valor            = $request->input('valor');
+    $transaction->data             = $request->input('data');
+    $transaction->tipo             = $request->input('tipo');
+    $transaction->id_categoria     = $request->input('id_categoria') ?: null;
+    $transaction->id_caixa         = $idCaixa;
+    $transaction->id_cartao        = $request->input('id_cartao') ?: null;
+    $transaction->id_cliente       = $request->input('id_cliente') ?: null;
+    $transaction->data_pagamento   = $request->input('data_pagamento') ?: null;
+    $transaction->data_recebimento = in_array($request->input('tipo'), ['emprestimo', 'pagamento_emprestimo'])
+      ? ($request->input('data_recebimento') ?: null)
+      : null;
+    $transaction->id_workspace     = $newWorkspaceId;
+
+    $transaction->save();
+
+    $backUrl = $request->input('_back', route('transactions.month'));
+    return redirect($backUrl)->with('success', 'Lançamento #' . $id . ' atualizado com sucesso.');
+  }
+
   public function saveModal(Request $request){
     return view('transactions/modal_save');
   }

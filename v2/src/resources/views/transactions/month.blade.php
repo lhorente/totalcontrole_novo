@@ -1,5 +1,9 @@
 @extends('layouts.dashboard')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/transaction-modal.css') }}">
+@endpush
+
 @section('content')
 <div class="content-header">
   <div class="container">
@@ -232,7 +236,7 @@
                     <th class="text-right th-sortable" style="width:100px; cursor:pointer; user-select:none" data-sort-key="valor" data-sort-type="number">
                       Valor <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
                     </th>
-                    <th class="text-right d-none d-sm-table-cell" style="width:70px">Pgto.</th>
+                    <th class="text-right d-none d-sm-table-cell" style="width:90px">Pgto.</th>
                   </tr>
                 </thead>
                 <tbody> 
@@ -242,7 +246,18 @@
                     $tipoBadge  = ['despesa'=>'danger','lucro'=>'success','transferencia'=>'secondary','emprestimo'=>'warning','pagamento_emprestimo'=>'success'];
                   @endphp
                   <tr style="cursor:pointer"
-                      onclick="bulkRowClick(event, '{{ $transaction->id }}', '/transactions/view/{{ $transaction->id }}?_back={{ urlencode(request()->fullUrl()) }}')"
+                      onclick="bulkRowClick(event, this)"
+                      data-id="{{ $transaction->id }}"
+                      data-descricao="{{ $transaction->descricao ?: '' }}"
+                      data-valor="{{ $transaction->valor }}"
+                      data-data="{{ $transaction->data->format('Y-m-d') }}"
+                      data-tipo="{{ $transaction->tipo }}"
+                      data-id-categoria="{{ $transaction->id_categoria ?? '' }}"
+                      data-id-cartao="{{ $transaction->id_cartao ?? '' }}"
+                      data-id-cliente="{{ $transaction->id_cliente ?? '' }}"
+                      data-data-pagamento="{{ $transaction->data_pagamento ? \Carbon\Carbon::parse($transaction->data_pagamento)->format('Y-m-d') : '' }}"
+                      data-data-recebimento="{{ $transaction->data_recebimento ? \Carbon\Carbon::parse($transaction->data_recebimento)->format('Y-m-d') : '' }}"
+                      data-id-workspace="{{ $transaction->id_workspace }}"
                       data-sort-data="{{ $transaction->data->format('Y-m-d') }}"
                       data-sort-descricao="{{ $transaction->descricao ?: $transaction->descricao_banco }}"
                       data-sort-categoria="{{ optional($transaction->category)->nome ?? '' }}"
@@ -312,9 +327,9 @@
                     </td>
                     <td class="text-right d-none d-sm-table-cell text-nowrap">
                       @if ($transaction->data_pagamento)
-                        <span class="text-success"><i class="fa fa-check" label="{{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m/Y') }}"></i> </span>
+                        <span class="text-success"><i class="fa fa-check" label="{{ \Carbon\Carbon::parse($transaction->data_pagamento)->format('d/m/Y') }}"></i></span>
                       @else
-                        <span class="text-danger"><i class="fa fa-clock" label="Pendente"></i> </span>
+                        <span class="text-danger"><i class="fa fa-clock" label="Pendente"></i></span>
                       @endif
                     </td>
                   </tr>
@@ -331,7 +346,20 @@
         {{-- CARD VIEW --}}
         <div id="view-cards" style="display:none">
           @forelse ($transactions as $transaction)
-          <a href="/transactions/view/{{ $transaction->id }}?_back={{ urlencode(request()->fullUrl()) }}" class="info-box info-box-transaction">
+          <a href="#"
+             onclick="event.preventDefault(); metOpenModal(this)"
+             class="info-box info-box-transaction"
+             data-id="{{ $transaction->id }}"
+             data-descricao="{{ $transaction->descricao ?: '' }}"
+             data-valor="{{ $transaction->valor }}"
+             data-data="{{ $transaction->data->format('Y-m-d') }}"
+             data-tipo="{{ $transaction->tipo }}"
+             data-id-categoria="{{ $transaction->id_categoria ?? '' }}"
+             data-id-cartao="{{ $transaction->id_cartao ?? '' }}"
+             data-id-cliente="{{ $transaction->id_cliente ?? '' }}"
+             data-data-pagamento="{{ $transaction->data_pagamento ? \Carbon\Carbon::parse($transaction->data_pagamento)->format('Y-m-d') : '' }}"
+             data-data-recebimento="{{ $transaction->data_recebimento ? \Carbon\Carbon::parse($transaction->data_recebimento)->format('Y-m-d') : '' }}"
+             data-id-workspace="{{ $transaction->id_workspace }}">
             <span class="info-box-icon {{ $transaction->data_pagamento ? 'bg-secondary' : ($transaction->tipo === 'receita' ? 'bg-success' : 'bg-danger') }}">
               @if ($transaction->category)
               <i class="{{ $transaction->category->icon_class }}"></i>
@@ -389,7 +417,86 @@
   </div>{{-- /.container --}}
 </div>{{-- /.content --}}
 
+@include('transactions.partials.modal_edit')
+
 <script>
+// ── Quick Edit Modal ──────────────────────────────────────────────────────────
+function metOpenModal(el) {
+  var d = el.dataset;
+
+  document.getElementById('form-met').action        = '/transactions/modal-update/' + d.id;
+  document.getElementById('form-met-delete').action = '/transactions/' + d.id;
+  document.getElementById('met-view-link').href     =
+    '/transactions/view/' + d.id + '?_back=' + encodeURIComponent(window.location.href);
+
+  document.getElementById('met-subtitle').textContent =
+    '#' + d.id + ' • ' + metFmtDate(d.data);
+
+  document.getElementById('met-descricao').value         = d.descricao        || '';
+  document.getElementById('met-valor').value             = d.valor            || '';
+  document.getElementById('met-data').value              = d.data             || '';
+  document.getElementById('met-id-workspace').value      = d.idWorkspace      || '';
+  document.getElementById('met-data-recebimento').value  = d.dataRecebimento  || '';
+
+  document.getElementById('met-tipo').value = d.tipo || 'despesa';
+
+  var catId = d.idCategoria || '';
+  document.getElementById('met-id-categoria').value = catId;
+  document.querySelectorAll('.met-quick-btn').forEach(function (qb) {
+    qb.classList.toggle('active', qb.dataset.value === catId);
+  });
+
+  document.getElementById('met-id-cartao').value  = d.idCartao  || '';
+  document.getElementById('met-id-cliente').value = d.idCliente || '';
+
+  var dataPgto = d.dataPagamento || '';
+  document.getElementById('met-data-pagamento').value = dataPgto;
+  document.getElementById('met-marcar-pago').checked  = dataPgto !== '';
+
+  $('#modal-edit-transaction').modal('show');
+}
+
+function metFmtDate(ymd) {
+  if (!ymd) return '';
+  var p = ymd.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  // Category quick buttons
+  document.querySelectorAll('.met-quick-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.met-quick-btn').forEach(function (b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      document.getElementById('met-id-categoria').value = this.dataset.value;
+    });
+  });
+
+  // "Marcar como pago" checkbox
+  document.getElementById('met-marcar-pago').addEventListener('change', function () {
+    var pgto = document.getElementById('met-data-pagamento');
+    if (this.checked && !pgto.value) {
+      pgto.value = new Date().toISOString().split('T')[0];
+    } else if (!this.checked) {
+      pgto.value = '';
+    }
+  });
+
+  // Sync checkbox when date field is changed directly
+  document.getElementById('met-data-pagamento').addEventListener('change', function () {
+    document.getElementById('met-marcar-pago').checked = this.value !== '';
+  });
+
+  // Delete button
+  document.getElementById('met-btn-delete').addEventListener('click', function () {
+    var subtitle = document.getElementById('met-subtitle').textContent;
+    if (confirm('Tem certeza que deseja excluir o lançamento ' + subtitle.split('•')[0].trim() + '? Esta ação não pode ser desfeita.')) {
+      document.getElementById('form-met-delete').submit();
+    }
+  });
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 (function () {
   // ── Bulk selection ────────────────────────────────────────────────────────
   var selectedIds = new Set();
@@ -465,10 +572,9 @@
     });
   });
 
-  // Row click that skips navigation when a checkbox is toggled directly
-  window.bulkRowClick = function (event, id, url) {
-    // If the click originated from the checkbox <td>, do nothing (stopPropagation handles it)
-    window.location = url;
+  // Row click opens the quick edit modal (checkbox td blocks propagation)
+  window.bulkRowClick = function (event, row) {
+    metOpenModal(row);
   };
   // ─────────────────────────────────────────────────────────────────────────
 

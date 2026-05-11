@@ -1,0 +1,307 @@
+/* Quick Edit Transaction Modal (met-* prefix) */
+
+#modal-edit-transaction .modal-dialog {
+  max-width: 560px;
+}
+
+#modal-edit-transaction .modal-content {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.met-header {
+  background: linear-gradient(135deg, #1B5E5C 0%, #2D8B86 100%);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.met-header-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.met-header-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.met-close-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.met-close-btn:hover { opacity: 1; }
+
+/* ── Body ────────────────────────────────────────────────────────────────── */
+.met-body {
+  padding: 24px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.met-section {
+  margin-bottom: 24px;
+}
+
+.met-section:last-child { margin-bottom: 0; }
+
+.met-section-label {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.met-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.met-section-header .met-section-label { margin-bottom: 0; }
+
+/* ── Fields ──────────────────────────────────────────────────────────────── */
+.met-form-group { margin-bottom: 0; }
+
+.met-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 6px;
+}
+
+.met-input {
+  width: 100%;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: #495057;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.met-input:focus {
+  outline: none;
+  border-color: #1B5E5C;
+  box-shadow: 0 0 0 3px rgba(27, 94, 92, 0.15);
+}
+
+/* Grid layouts */
+.met-field-group {
+  display: grid;
+  gap: 16px;
+}
+
+.met-grid-2   { grid-template-columns: 1fr 1fr; }
+.met-grid-2-1 { grid-template-columns: 2fr 1fr; }
+
+@media (max-width: 480px) {
+  .met-grid-2,
+  .met-grid-2-1 { grid-template-columns: 1fr; }
+}
+
+/* Currency prefix */
+.met-currency-wrap { position: relative; }
+
+.met-currency-prefix {
+  position: absolute;
+  left: 12px;
+  bottom: 9px;
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.met-currency-wrap .met-input { padding-left: 38px; }
+
+/* ── Category quick-buttons ──────────────────────────────────────────────── */
+.met-quick-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.met-quick-btn {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+  color: #495057;
+  line-height: 1.4;
+}
+
+.met-quick-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.met-quick-btn.active {
+  background: #1B5E5C;
+  color: #fff;
+  border-color: #1B5E5C;
+}
+
+/* ── Optional badge ──────────────────────────────────────────────────────── */
+.met-badge-optional {
+  display: inline-block;
+  background: #E8F5F3;
+  color: #1B5E5C;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ── Payment section ─────────────────────────────────────────────────────── */
+.met-payment-section {
+  background: #ECF2F9;
+  border-left: 4px solid #2E6FB3;
+  border-radius: 0 6px 6px 0;
+  padding: 14px 16px;
+}
+
+.met-payment-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1D4A7C;
+}
+
+.met-helper-text {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.met-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #495057;
+  cursor: pointer;
+  font-weight: normal;
+  margin-bottom: 0;
+  padding-bottom: 4px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.met-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.met-footer-right {
+  display: flex;
+  gap: 8px;
+}
+
+.met-btn-delete {
+  background: transparent;
+  color: #dc3545;
+  border: 1px solid #dee2e6;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 150ms ease;
+}
+
+.met-btn-delete:hover {
+  background: #fff5f5;
+  border-color: #dc3545;
+}
+
+.met-btn-cancel {
+  background: transparent;
+  color: #1B5E5C;
+  border: 1px solid #dee2e6;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.met-btn-cancel:hover { background: #f8f9fa; }
+
+.met-btn-save {
+  background: linear-gradient(135deg, #1B5E5C 0%, #2D8B86 100%);
+  color: #fff;
+  border: none;
+  padding: 9px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 150ms ease;
+}
+
+.met-btn-save:hover { opacity: 0.9; }
+
+/* ── "Ver detalhes" link in modal footer ─────────────────────────────────── */
+.met-btn-view {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  color: #6c757d;
+  font-size: 14px;
+  text-decoration: none;
+  transition: all 150ms ease;
+}
+
+.met-btn-view:hover {
+  background: #f8f9fa;
+  color: #1B5E5C;
+  border-color: #1B5E5C;
+  text-decoration: none;
+}
