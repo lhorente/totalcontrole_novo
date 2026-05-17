@@ -233,6 +233,11 @@
                       Pessoa <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
                     </th>
                     @endif
+                    @if (!empty($showWorkspaceColumn))
+                    <th class="d-none d-md-table-cell th-sortable text-center" style="width:60px; cursor:pointer; user-select:none" data-sort-key="workspace" data-sort-type="text">
+                      WS <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
+                    </th>
+                    @endif
                     <th class="text-right th-sortable" style="width:100px; cursor:pointer; user-select:none" data-sort-key="valor" data-sort-type="number">
                       Valor <i class="fas fa-sort sort-icon text-muted ml-1" style="font-size:.75em"></i>
                     </th>
@@ -264,6 +269,7 @@
                       data-sort-tipo="{{ $tipoLabels[$transaction->tipo] ?? $transaction->tipo ?? '' }}"
                       data-sort-cartao="{{ optional($transaction->credit_card)->descricao ?? '' }}"
                       data-sort-pessoa="{{ optional($transaction->contact)->nome ?? '' }}"
+                      data-sort-workspace="{{ optional($transaction->workspace)->nome ?? '' }}"
                       data-sort-valor="{{ $transaction->valor }}">
                     <td onclick="event.stopPropagation()" class="text-center" style="width:35px">
                       <input type="checkbox" class="cb-row" data-id="{{ $transaction->id }}">
@@ -320,6 +326,17 @@
                       @else
                         —
                       @endif
+                    </td>
+                    @endif
+                    @if (!empty($showWorkspaceColumn))
+                    <td class="d-none d-md-table-cell text-center" title="{{ optional($transaction->workspace)->nome ?? '' }}">
+                      @php
+                        $wsNome = optional($transaction->workspace)->nome ?? '';
+                        $wsInitials = $wsNome
+                          ? implode('', array_map(fn($w) => mb_strtoupper(mb_substr($w, 0, 1)), array_filter(explode(' ', $wsNome))))
+                          : '—';
+                      @endphp
+                      <span class="badge badge-secondary">{{ $wsInitials }}</span>
                     </td>
                     @endif
                     <td class="text-right font-weight-bold text-nowrap">

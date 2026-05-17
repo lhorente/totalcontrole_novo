@@ -110,7 +110,7 @@ class TransactionsController extends Controller
       ->where('status', '!=', 'cancelado')
       ->whereYear('data', $year)
       ->whereMonth('data', $month)
-      ->with(['category', 'contact', 'wallet', 'credit_card'])
+      ->with(['category', 'contact', 'wallet', 'credit_card', 'workspace'])
       ->orderBy('data_pagamento', 'asc')
       ->orderBy('data', 'asc')
       ->get();
@@ -166,6 +166,7 @@ class TransactionsController extends Controller
     $caixa     = null;
     $nav_route    = 'transactions.month';
     $activeWorkspace = Workspace::find(session('active_workspace_id'));
+    $showWorkspaceColumn = true;
 
     return view('transactions/month', compact(
       'transactions',
@@ -189,7 +190,8 @@ class TransactionsController extends Controller
       'nav_route',
       'activeWorkspace',
       'prevUrl',
-      'nextUrl'
+      'nextUrl',
+      'showWorkspaceColumn'
     ));
   }
 
