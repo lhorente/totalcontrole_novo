@@ -294,7 +294,7 @@
                           <span class="text-muted ml-1"><i class="fa fa-credit-card fa-xs"></i> {{ $transaction->credit_card->descricao }}</span>
                         @endif
                         @if ($transaction->contact)
-                          <span class="text-muted ml-1"><i class="fa fa-user fa-xs"></i> {{ $transaction->contact->nome }}</span>
+                          <span class="text-muted ml-1"><i class="fa fa-user fa-xs"></i> {{ explode(' ', $transaction->contact->nome)[0] }}</span>
                         @endif
                         <br>
                         @if ($transaction->data_pagamento)
@@ -322,7 +322,7 @@
                     @if (optional($activeWorkspace)->tipo != 'empresa')
                     <td class="d-none d-md-table-cell">
                       @if ($transaction->contact)
-                        <i class="fa fa-user fa-xs text-muted"></i> {{ $transaction->contact->nome }}
+                        <i class="fa fa-user fa-xs text-muted"></i> {{ explode(' ', $transaction->contact->nome)[0] }}
                       @else
                         —
                       @endif
@@ -409,9 +409,9 @@
 
                 @if ($transaction->contact)
                   @if ($transaction->data_recebimento)
-                    <span><i class="fa fa-user-check"></i> {{ $transaction->contact->nome }}</span>
+                    <span><i class="fa fa-user-check"></i> {{ explode(' ', $transaction->contact->nome)[0] }}</span>
                   @else
-                    <span><i class="fa fa-user"></i> {{ $transaction->contact->nome }}</span>
+                    <span><i class="fa fa-user"></i> {{ explode(' ', $transaction->contact->nome)[0] }}</span>
                   @endif
                 @endif
 
