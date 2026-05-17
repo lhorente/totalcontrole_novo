@@ -180,13 +180,13 @@
 
         {{-- Bulk action toolbar (shown when rows are selected) --}}
         <div id="bulk-toolbar" style="display:none" class="card card-body py-2 px-3 mb-2 bg-light border">
-          <div class="d-flex align-items-center flex-wrap">
-            <span class="mr-3"><strong id="bulk-count">0</strong> selecionado(s)</span>
-            <form id="bulk-form" method="POST" action="{{ route('transactions.bulkUpdate') }}" class="d-flex align-items-center mr-3">
+          <div class="d-flex align-items-center flex-wrap" style="gap:.5rem">
+            <span class="mr-1"><strong id="bulk-count">0</strong> selecionado(s)</span>
+            <form id="bulk-form" method="POST" action="{{ route('transactions.bulkUpdate') }}" class="d-flex align-items-center" style="gap:.5rem">
               @csrf
               <input type="hidden" name="field" value="id_categoria">
-              <label class="mb-0 mr-2 text-nowrap">Categoria:</label>
-              <select name="value" class="form-control form-control-sm mr-2" style="width:200px">
+              <label class="mb-0 text-nowrap">Categoria:</label>
+              <select name="value" class="form-control form-control-sm" style="width:200px">
                 <option value="">— Sem categoria —</option>
                 @foreach ($categorias as $cat)
                   <option value="{{ $cat->id }}">{{ $cat->nome }}</option>
@@ -196,6 +196,21 @@
                 <i class="fa fa-check"></i> Aplicar
               </button>
             </form>
+            @if (isset($workspaces) && $workspaces->count() > 1)
+            <form id="bulk-form-ws" method="POST" action="{{ route('transactions.bulkUpdate') }}" class="d-flex align-items-center" style="gap:.5rem">
+              @csrf
+              <input type="hidden" name="field" value="id_workspace">
+              <label class="mb-0 text-nowrap">Workspace:</label>
+              <select name="value" class="form-control form-control-sm" style="width:200px">
+                @foreach ($workspaces as $ws)
+                  <option value="{{ $ws->id }}">{{ $ws->nome }}</option>
+                @endforeach
+              </select>
+              <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                <i class="fa fa-check"></i> Aplicar
+              </button>
+            </form>
+            @endif
             <button type="button" class="btn btn-sm btn-outline-secondary ml-auto" id="bulk-clear">
               <i class="fa fa-times"></i> Cancelar seleção
             </button>
@@ -651,6 +666,22 @@ document.addEventListener('DOMContentLoaded', function () {
       form.appendChild(input);
     });
   });
+
+  var bulkFormWs = document.getElementById('bulk-form-ws');
+  if (bulkFormWs) {
+    bulkFormWs.addEventListener('submit', function (e) {
+      if (selectedIds.size === 0) { e.preventDefault(); return; }
+      this.querySelectorAll('input[name="ids[]"]').forEach(function (el) { el.remove(); });
+      var form = this;
+      selectedIds.forEach(function (id) {
+        var input   = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'ids[]';
+        input.value = id;
+        form.appendChild(input);
+      });
+    });
+  }
 
   // Row click opens the quick edit modal (checkbox td blocks propagation)
   window.bulkRowClick = function (event, row) {

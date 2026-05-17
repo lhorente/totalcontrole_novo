@@ -167,6 +167,7 @@ class TransactionsController extends Controller
     $nav_route    = 'transactions.month';
     $activeWorkspace = Workspace::find(session('active_workspace_id'));
     $showWorkspaceColumn = true;
+    $workspaces = Auth::user()->workspaces()->where('workspaces.ativo', true)->orderBy('workspaces.nome')->get();
 
     return view('transactions/month', compact(
       'transactions',
@@ -191,7 +192,8 @@ class TransactionsController extends Controller
       'activeWorkspace',
       'prevUrl',
       'nextUrl',
-      'showWorkspaceColumn'
+      'showWorkspaceColumn',
+      'workspaces'
     ));
   }
 
@@ -277,6 +279,8 @@ class TransactionsController extends Controller
                      ->orderBy('titulo')
                      ->get();
 
+    $workspaces = Auth::user()->workspaces()->where('workspaces.ativo', true)->orderBy('workspaces.nome')->get();
+
     $ps = $request->input('ps');
     if ($ps == 'lendings_not_paid'){
       $transactions = Transaction::getLendingsNotPaid($id_cliente);
@@ -344,7 +348,8 @@ class TransactionsController extends Controller
       'total_a_receber',
       'total_recebido',
       'nav_route',
-      'activeWorkspace'
+      'activeWorkspace',
+      'workspaces'
     ));
   }
 
@@ -644,13 +649,21 @@ class TransactionsController extends Controller
     $request->validate([
       'ids'   => 'required|array|min:1',
       'ids.*' => 'integer',
-      'field' => 'required|in:id_categoria',
+      'field' => 'required|in:id_categoria,id_workspace',
       'value' => 'nullable|integer',
     ]);
 
     $ids   = $request->input('ids');
     $field = $request->input('field');
     $value = $request->input('value') ?: null;
+
+    if ($field === 'id_workspace') {
+      abort_unless(
+        $value && Auth::user()->workspaces()->where('workspaces.id', $value)->where('workspaces.ativo', true)->exists(),
+        403,
+        'Workspace inválido ou sem permissão.'
+      );
+    }
 
     $count = Transaction::whereIn('id', $ids)
       ->where('id_usuario', Auth::id())
