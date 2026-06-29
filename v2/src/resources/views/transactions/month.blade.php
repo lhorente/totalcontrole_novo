@@ -168,12 +168,17 @@
 
         <div class="d-flex justify-content-between align-items-center mb-2">
           <small class="text-muted">{{ $transactions->count() }} lançamento(s)</small>
-          <div class="btn-group btn-group-sm" role="group" id="view-toggle">
-            <button type="button" class="btn btn-outline-secondary" id="btn-view-table" title="Visualização em tabela">
-              <i class="fas fa-table"></i>
-            </button>
-            <button type="button" class="btn btn-outline-secondary" id="btn-view-cards" title="Visualização em cartões">
-              <i class="fas fa-th-list"></i>
+          <div class="d-flex" style="gap:.5rem">
+            <div class="btn-group btn-group-sm" role="group" id="view-toggle">
+              <button type="button" class="btn btn-outline-secondary" id="btn-view-table" title="Visualização em tabela">
+                <i class="fas fa-table"></i>
+              </button>
+              <button type="button" class="btn btn-outline-secondary" id="btn-view-cards" title="Visualização em cartões">
+                <i class="fas fa-th-list"></i>
+              </button>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#modal-export" title="Exportar lançamentos">
+              <i class="fas fa-download"></i> Exportar
             </button>
           </div>
         </div>
@@ -278,6 +283,8 @@
                       data-data-pagamento="{{ $transaction->data_pagamento ? \Carbon\Carbon::parse($transaction->data_pagamento)->format('Y-m-d') : '' }}"
                       data-data-recebimento="{{ $transaction->data_recebimento ? \Carbon\Carbon::parse($transaction->data_recebimento)->format('Y-m-d') : '' }}"
                       data-id-workspace="{{ $transaction->id_workspace }}"
+                      data-descricao-banco="{{ $transaction->descricao_banco ?: '' }}"
+                      data-chave-banco="{{ $transaction->chave_banco ?: '' }}"
                       data-sort-data="{{ $transaction->data->format('Y-m-d') }}"
                       data-sort-descricao="{{ $transaction->descricao ?: $transaction->descricao_banco }}"
                       data-sort-categoria="{{ optional($transaction->category)->nome ?? '' }}"
@@ -451,6 +458,37 @@
 
 @include('transactions.partials.modal_edit')
 @include('transactions.partials.modal_create')
+
+{{-- Export Modal --}}
+<div class="modal fade" id="modal-export" tabindex="-1" role="dialog" aria-labelledby="modal-export-title" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header py-2 px-3">
+        <h6 class="modal-title" id="modal-export-title"><i class="fas fa-download mr-1"></i> Exportar lançamentos</h6>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body px-3 py-3">
+        <p class="text-muted mb-2" style="font-size:.85em">Formato:</p>
+        <div class="btn-group btn-group-sm d-flex mb-3" role="group" id="export-fmt-toggle">
+          <button type="button" class="btn btn-outline-secondary active" data-fmt="csv">CSV</button>
+          <button type="button" class="btn btn-outline-secondary" data-fmt="json">JSON</button>
+          <button type="button" class="btn btn-outline-secondary" data-fmt="md">Markdown</button>
+        </div>
+        <div class="d-flex flex-column" style="gap:.5rem">
+          <button type="button" class="btn btn-primary btn-block" id="export-do-download">
+            <i class="fas fa-download mr-1"></i> Baixar arquivo
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-block" id="export-do-copy">
+            <i class="fas fa-copy mr-1"></i> Copiar para área de transferência
+          </button>
+        </div>
+        <div id="export-copy-feedback" class="mt-2 text-center text-success" style="display:none; font-size:.85em">
+          <i class="fas fa-check mr-1"></i> Copiado!
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── Quick Edit Modal ──────────────────────────────────────────────────────────
@@ -762,6 +800,117 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('btn-view-cards').addEventListener('click', function () { applyMode('cards'); });
 
   applyMode(mode);
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Export ────────────────────────────────────────────────────────────────
+  var exportFmt = 'csv';
+
+  var EXPORT_KEYS    = ['id', 'data', 'descricao', 'descricao_banco', 'chave_banco', 'tipo', 'categoria', 'cartao', 'pessoa', 'valor', 'data_pagamento', 'data_recebimento', 'workspace'];
+  var EXPORT_HEADERS = ['ID', 'Data', 'Descrição', 'Desc. Banco', 'Chave Banco', 'Tipo', 'Categoria', 'Cartão', 'Pessoa', 'Valor', 'Pgto.', 'Recebimento', 'Workspace'];
+
+  function getTransactionData() {
+    var rows = document.querySelectorAll('#view-table tbody tr');
+    var data = [];
+    rows.forEach(function (row) {
+      var d = row.dataset;
+      data.push({
+        id:               d.id                || '',
+        data:             d.data              || '',
+        descricao:        d.sortDescricao     || d.descricao || '',
+        descricao_banco:  d.descricaoBanco    || '',
+        chave_banco:      d.chaveBanco        || '',
+        tipo:             d.tipo              || '',
+        categoria:        d.sortCategoria     || '',
+        cartao:           d.sortCartao        || '',
+        pessoa:           d.sortPessoa        || '',
+        valor:            d.valor             || '',
+        data_pagamento:   d.dataPagamento     || '',
+        data_recebimento: d.dataRecebimento   || '',
+        workspace:        d.sortWorkspace     || '',
+      });
+    });
+    return data;
+  }
+
+  function downloadFile(filename, content, mimeType) {
+    var blob = new Blob([content], { type: mimeType });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function buildExportContent(fmt) {
+    var data = getTransactionData();
+    if (fmt === 'json') {
+      return { content: JSON.stringify(data, null, 2), filename: 'lancamentos.json', mimeType: 'application/json' };
+    }
+    if (fmt === 'csv') {
+      var lines = [EXPORT_HEADERS.map(function (h) { return '"' + h + '"'; }).join(';')];
+      data.forEach(function (row) {
+        lines.push(EXPORT_KEYS.map(function (k) { return '"' + String(row[k]).replace(/"/g, '""') + '"'; }).join(';'));
+      });
+      return { content: '\uFEFF' + lines.join('\r\n'), filename: 'lancamentos.csv', mimeType: 'text/csv;charset=utf-8' };
+    }
+    // markdown
+    var sep   = EXPORT_HEADERS.map(function () { return '---'; });
+    var lines = [
+      '| ' + EXPORT_HEADERS.join(' | ') + ' |',
+      '| ' + sep.join(' | ') + ' |',
+    ];
+    data.forEach(function (row) {
+      lines.push('| ' + EXPORT_KEYS.map(function (k) { return String(row[k]).replace(/\|/g, '\\|'); }).join(' | ') + ' |');
+    });
+    return { content: lines.join('\n'), filename: 'lancamentos.md', mimeType: 'text/markdown;charset=utf-8' };
+  }
+
+  function showCopyFeedback(el) {
+    el.style.display = '';
+    setTimeout(function () { el.style.display = 'none'; }, 2000);
+  }
+
+  function fallbackCopy(text, feedback) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); if (feedback) { showCopyFeedback(feedback); } } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  document.querySelectorAll('#export-fmt-toggle [data-fmt]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      exportFmt = this.dataset.fmt;
+      document.querySelectorAll('#export-fmt-toggle [data-fmt]').forEach(function (b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      document.getElementById('export-copy-feedback').style.display = 'none';
+    });
+  });
+
+  document.getElementById('export-do-download').addEventListener('click', function () {
+    var result = buildExportContent(exportFmt);
+    downloadFile(result.filename, result.content, result.mimeType);
+    $('#modal-export').modal('hide');
+  });
+
+  document.getElementById('export-do-copy').addEventListener('click', function () {
+    var result   = buildExportContent(exportFmt);
+    var feedback = document.getElementById('export-copy-feedback');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(result.content)
+        .then(function () { showCopyFeedback(feedback); })
+        .catch(function () { fallbackCopy(result.content, feedback); });
+    } else {
+      fallbackCopy(result.content, feedback);
+    }
+  });
+  // ─────────────────────────────────────────────────────────────────────────
 })();
 </script>
 @endsection
