@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum', 'verified', 'workspace'])->group(function () 
   Route::get('/transactions/modal_save',[TransactionsController::class, 'saveModal']);
   Route::get('/transactions/import',[TransactionsController::class, 'import'])->name('transactions.import');
   Route::post('/transactions/import-preview',[TransactionsController::class, 'importPreview'])->name('transactions.importPreview');
+  Route::post('/transactions/import-preview-json',[TransactionsController::class, 'importPreviewJson'])->name('transactions.importPreviewJson');
   Route::post('/transactions/import-store',[TransactionsController::class, 'importStore'])->name('transactions.importStore');
 
   Route::post('/workspace/switch/{id}', [WorkspaceController::class, 'switch'])->name('workspace.switch');

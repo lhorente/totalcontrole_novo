@@ -821,14 +821,13 @@ class TransactionsController extends Controller
       
       $transaction['is_duplicada'] = $isDuplicada;
       $transaction['is_duplicada_por_valor'] = $isDuplicadaPorValor;
-      $transaction['duplicada_por_valor_descricao'] = $isDuplicadaPorValor
-          ? ($transacaoSimilar->descricao ?: $transacaoSimilar->descricao_banco)
-          : null;
+      $transaction['duplicada_por_valor_descricao'] = $isDuplicadaPorValor ? ($transacaoSimilar->descricao ?: $transacaoSimilar->descricao_banco) : null;
+      $transaction['duplicada_por_valor_valor'] = $isDuplicadaPorValor ? $transacaoSimilar->valor  : null;
       $transaction['is_duplicada_por_valor_aproximado'] = $isDuplicadaPorValorAproximado;
-      $transaction['duplicada_por_valor_aproximado_descricao'] = $isDuplicadaPorValorAproximado
-          ? ($transacaoSimilarAproximada->descricao ?: $transacaoSimilarAproximada->descricao_banco)
-          : null;
+      $transaction['duplicada_por_valor_aproximado_descricao'] = $isDuplicadaPorValorAproximado ? ($transacaoSimilarAproximada->descricao ?: $transacaoSimilarAproximada->descricao_banco) : null;
+      $transaction['duplicada_por_valor_aproximado_valor'] = $isDuplicadaPorValorAproximado ? $transacaoSimilarAproximada->valor : null;
       $transaction['chave_banco'] = $chaveBanco;
+      $transaction['data_banco'] = $dataBanco;
       $transaction['_key'] = $idx;
       
       return $transaction;
@@ -932,6 +931,196 @@ class TransactionsController extends Controller
       'categorias'        => $categorias,
       'pessoas'           => $pessoas,
       'installmentGroups' => $installmentGroups,
+    ]);
+  }
+
+  public function importPreviewJson(Request $request)
+  {
+    $request->validate([
+      'id_cartao'   => 'required|exists:cartoes,id',
+      'data_fatura' => 'required|date',
+    ]);
+
+    $idCartao         = $request->input('id_cartao');
+    $dataFatura       = $request->input('data_fatura');
+    $dataFaturaCarbon = Carbon::parse($dataFatura);
+
+    $jsonContent = null;
+
+    if ($request->hasFile('file') && $request->file('file')->isValid()) {
+      $ext = strtolower($request->file('file')->getClientOriginalExtension());
+      if ($ext !== 'json') {
+        return back()->withErrors(['file' => 'O arquivo deve ser do tipo JSON (.json).'])->withInput();
+      }
+      $jsonContent = file_get_contents($request->file('file')->getRealPath());
+    } elseif ($request->filled('json_content')) {
+      $jsonContent = $request->input('json_content');
+    } else {
+      return back()->withErrors(['file' => 'Envie um arquivo JSON ou cole o conteúdo JSON na caixa de texto.'])->withInput();
+    }
+
+    $data = json_decode($jsonContent, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE || !isset($data['transacoes']) || !is_array($data['transacoes'])) {
+      return back()->withErrors(['file' => 'JSON inválido ou estrutura inesperada. Verifique se o arquivo foi gerado corretamente.'])->withInput();
+    }
+
+    $categorias = Category::getCategories();
+    $contatos   = Contact::getCurrentUserContacts();
+    $catMap     = $categorias->keyBy(fn($c) => mb_strtolower(trim($c->nome)));
+    $contatoMap = $contatos->keyBy(fn($c) => mb_strtolower(trim($c->nome)));
+
+    $cartao = CreditCard::find($idCartao);
+
+    // Process each transaction: map IDs, generate chave_banco and check duplicates
+    $transacoesProcessadas = [];
+    foreach ($data['transacoes'] as $t) {
+      $t['id_categoria'] = $catMap->get(mb_strtolower(trim($t['categoria'] ?? '')))?->id ?? null;
+      $t['id_cliente']   = $contatoMap->get(mb_strtolower(trim($t['pessoa'] ?? '')))?->id ?? null;
+
+      $dataBanco  = $t['data_banco'] ?? '';
+      $descricao  = $t['descricao_banco'] ?? '';
+      $valor      = floatval($t['valor'] ?? 0);
+
+      // Each transaction can carry its own data_fatura (multi-bill JSON); fall back to request value
+      $dataFaturaTransacao       = $t['data_fatura'] ?? $dataFatura;
+      $dataFaturaTransacaoCarbon = Carbon::parse($dataFaturaTransacao);
+
+      // Generate chave_banco
+      $chaveBanco = md5($dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFaturaTransacao);
+
+      // Check exact duplicate by chave_banco
+      $transacaoDuplicada = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
+        ->where('chave_banco', $chaveBanco)
+        ->where('id_usuario', Auth::id())
+        ->select('id', 'descricao', 'descricao_banco')
+        ->first();
+      $isDuplicada = $transacaoDuplicada !== null;
+
+      // Check similar by exact rounded value (same card, same month)
+      $valorArredondado = round($valor, 2);
+      $transacaoSimilar = !$isDuplicada
+        ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
+            ->where('id_usuario', Auth::id())
+            ->where('id_cartao', $idCartao)
+            ->whereNull('chave_banco')
+            ->whereRaw('ROUND(valor, 2) = ?', [$valorArredondado])
+            ->whereYear('data', $dataFaturaTransacaoCarbon->year)
+            ->whereMonth('data', $dataFaturaTransacaoCarbon->month)
+            ->select('id', 'descricao', 'descricao_banco')
+            ->first()
+        : null;
+      $isDuplicadaPorValor = $transacaoSimilar !== null;
+
+      // Check similar by approximate value (floor, ignoring cents)
+      $transacaoSimilarAproximada    = null;
+      $isDuplicadaPorValorAproximado = false;
+      if (!$isDuplicadaPorValor) {
+        $valorInteiro = (int) floor(abs($valor));
+        $transacaoSimilarAproximada = (!$isDuplicada)
+          ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
+              ->where('id_usuario', Auth::id())
+              ->where('id_cartao', $idCartao)
+              ->whereRaw('FLOOR(ABS(valor)) = ?', [$valorInteiro])
+              ->whereYear('data', $dataFaturaTransacaoCarbon->year)
+              ->whereMonth('data', $dataFaturaTransacaoCarbon->month)
+              ->select('id', 'descricao', 'descricao_banco')
+              ->first()
+          : null;
+        $isDuplicadaPorValorAproximado = $transacaoSimilarAproximada !== null;
+      }
+
+      $t['chave_banco']           = $chaveBanco;
+      $t['data_fatura_transacao'] = $dataFaturaTransacao;
+
+      // Duplicate flags + found objects
+      $t['is_duplicada'] = $isDuplicada;
+      // $t['is_similar'] = $isDuplicadaPorValor;
+      // $t['is_similar_aproximado'] = $isDuplicadaPorValorAproximado;
+
+      if ($isDuplicada){
+        $t['duplicada']    = $transacaoDuplicada
+          ? ['id' => $transacaoDuplicada->id, 'descricao' => $transacaoDuplicada->descricao, 'descricao_banco' => $transacaoDuplicada->descricao_banco]
+          : null;
+      } else if ($isDuplicadaPorValor) {
+        // $t['duplicada']    = $transacaoSimilar
+        //   ? ['id' => $transacaoSimilar->id, 'descricao' => $transacaoSimilar->descricao, 'descricao_banco' => $transacaoSimilar->descricao_banco]
+        //   : null;
+      } else if ($isDuplicadaPorValorAproximado){
+        // $t['duplicada']    = $transacaoSimilarAproximada
+        //   ? ['id' => $transacaoSimilarAproximada->id, 'descricao' => $transacaoSimilarAproximada->descricao, 'descricao_banco' => $transacaoSimilarAproximada->descricao_banco]
+        //   : null;
+      }
+
+      $transacoesProcessadas[] = $t;
+    }
+
+    // Separate transactions by billing month: current vs future
+    $transacoesFaturaAtual = [];
+    $proximasFaturas       = [];
+
+    foreach ($transacoesProcessadas as $t) {
+      $dtCarbon = Carbon::parse($t['data_fatura_transacao']);
+      $mesAno   = $dtCarbon->format('Y-m');
+
+      if ($dtCarbon->year === $dataFaturaCarbon->year && $dtCarbon->month === $dataFaturaCarbon->month) {
+        $transacoesFaturaAtual[] = $t;
+      } else {
+        // Fetch existing DB total for that future month (once per month)
+        if (!isset($proximasFaturas[$mesAno])) {
+          $totalExistente = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
+            ->where('id_usuario', Auth::id())
+            ->where('id_cartao', $idCartao)
+            ->where('status', '!=', 'cancelado')
+            ->whereYear('data', $dtCarbon->year)
+            ->whereMonth('data', $dtCarbon->month)
+            ->sum('valor');
+
+          $proximasFaturas[$mesAno] = [
+            'mes_ano'         => $mesAno,
+            'data_fatura'     => $dtCarbon->format('Y-m-d'),
+            'total_existente' => $totalExistente,
+            'transacoes'      => [],
+          ];
+        }
+        $proximasFaturas[$mesAno]['transacoes'][] = $t;
+      }
+    }
+
+    // Keep future bills sorted chronologically
+    ksort($proximasFaturas);
+
+    // Total of the next calendar month already saved in the DB
+    $proximaFaturaCarbon  = $dataFaturaCarbon->copy()->addMonth();
+    $totalProximaFatura   = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
+      ->where('id_usuario', Auth::id())
+      ->where('id_cartao', $idCartao)
+      ->where('status', '!=', 'cancelado')
+      ->whereYear('data', $proximaFaturaCarbon->year)
+      ->whereMonth('data', $proximaFaturaCarbon->month)
+      ->sum('valor');
+
+    // Total of current-bill transactions (excluding payments / previous balance)
+    $totalFatura = collect($transacoesFaturaAtual)->filter(function ($t) {
+      $desc  = strtoupper($t['descricao_banco'] ?? '');
+      $valor = floatval($t['valor'] ?? 0);
+      return $valor > 0
+        && !str_contains($desc, 'SALDO ANTERIOR')
+        && !str_contains($desc, 'PAGTO');
+    })->sum('valor');
+
+// dd($transacoesFaturaAtual);
+
+    return view('transactions/importPreviewJson', [
+      'transacoes'          => $transacoesFaturaAtual,
+      'proximas_faturas'    => array_values($proximasFaturas),
+      'total_fatura'        => $totalFatura,
+      'total_proxima_fatura' => $totalProximaFatura,
+      'id_cartao'           => $idCartao,
+      'data_fatura'         => $dataFatura,
+      'cartao'              => $cartao,
+      'categorias'          => $categorias,
+      'contatos'            => $contatos,
     ]);
   }
 

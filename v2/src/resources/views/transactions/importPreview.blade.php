@@ -19,60 +19,29 @@
   </div>
 </div>
 
+  @php
+    $duplicadas = $transactions->filter(function($t) { return $t['is_duplicada'] ?? false; })->count();
+    $valorDuplicadas = $transactions->filter(function($t) { return $t['is_duplicada_por_valor'] ?? false; })->count();
+    $valorAproximadoDuplicadas = $transactions->filter(function($t) { return $t['is_duplicada_por_valor_aproximado'] ?? false; })->count();
+  @endphp
+
 <div class="content">
-  <div class="container-fluid">
+  <div class="container">
     <div class="row">
       <div class="col-12">
 
-        <div class="alert alert-info alert-dismissible">
-          <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-          <h5><i class="icon fas fa-info"></i> Informações da Importação</h5>
-          <p><strong>Cartão:</strong> ID {{ $id_cartao }}</p>
-          <p><strong>Data da Fatura:</strong> {{ $data_fatura }}</p>
-          <p><strong>Total de Transações:</strong> {{ $transactions->count() }}</p>
+        <div class="t-topbar">
+            <div>
+              <h2>Importar fatura — {{ $id_cartao }}</h2>
+              <div class="t-topbar-meta">Fatura: {{ $data_fatura }}· {{ $transactions->count() }} transações</div>
+              </div>
+              <div class="t-topbar-pills">
+              <div class="t-topbar-pill" id="pill-new">{{ $transactions->count() }} lançamentos</div>
+              <div class="t-topbar-pill" id="pill-inst"> meses futuros</div>
+              <div class="t-topbar-pill" id="pill-pend"> sem categoria</div>
+              <div class="t-topbar-pill" id="pill-dup"> {{ $duplicadas }} duplicatas</div>
+            </div>
         </div>
-
-        @php
-          $duplicadas = $transactions->filter(function($t) { return $t['is_duplicada'] ?? false; })->count();
-          $valorDuplicadas = $transactions->filter(function($t) { return $t['is_duplicada_por_valor'] ?? false; })->count();
-          $valorAproximadoDuplicadas = $transactions->filter(function($t) { return $t['is_duplicada_por_valor_aproximado'] ?? false; })->count();
-        @endphp
-
-        @if($duplicadas > 0)
-        <div class="alert alert-warning alert-dismissible">
-          <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-          <h5><i class="icon fas fa-exclamation-triangle"></i> Possíveis Duplicatas!</h5>
-          <p><strong>{{ $duplicadas }}</strong> transação(ões) já existem no sistema (mesma chave) e foram desmarcadas automaticamente.</p>
-          <p>As linhas em <span style="background:#fff3cd;padding:2px 6px;">amarelo</span> já existem. Você pode marcá-las novamente se desejar importar mesmo assim.</p>
-        </div>
-        @endif
-
-        @if($valorDuplicadas > 0)
-        <div class="alert alert-dismissible" style="background-color:#fde8d0;border-color:#f59f55;color:#7a4a0a;">
-          <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-          <h5><i class="icon fas fa-search"></i> Valor já lançado neste mês!</h5>
-          <p><strong>{{ $valorDuplicadas }}</strong> transação(ões) possuem o mesmo valor, cartão e mês de uma transação já existente.</p>
-          <p>As linhas em <span style="background:#fde8d0;padding:2px 6px;">laranja</span> estão marcadas, mas verifique se não são repetições.</p>
-        </div>
-        @endif
-
-        @if($valorAproximadoDuplicadas > 0)
-        <div class="alert alert-dismissible" style="background-color:#e8f4fd;border-color:#7ab8e8;color:#1a4a7a;">
-          <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-          <h5><i class="icon fas fa-balance-scale"></i> Valor aproximado já lançado neste mês!</h5>
-          <p><strong>{{ $valorAproximadoDuplicadas }}</strong> transação(ões) possuem valor aproximado (desconsiderando centavos) de uma transação já existente no mesmo cartão e mês.</p>
-          <p>As linhas em <span style="background:#e8f4fd;padding:2px 6px;">azul</span> estão marcadas, mas verifique se não são repetições com diferença de arredondamento.</p>
-          <ul class="mb-0 mt-1">
-            @foreach($transactions->filter(fn($t) => $t['is_duplicada_por_valor_aproximado'] ?? false) as $tSimilar)
-              <li>
-                <strong>{{ $tSimilar['descricao_banco'] }}</strong>
-                (R$ {{ number_format($tSimilar['valor'], 2, ',', '.') }})
-                → encontrou: <em>{{ $tSimilar['duplicada_por_valor_aproximado_descricao'] }}</em>
-              </li>
-            @endforeach
-          </ul>
-        </div>
-        @endif
 
         <form action="{{ route('transactions.importStore') }}" method="POST">
           @csrf
@@ -81,31 +50,20 @@
           <input type="hidden" name="data_fatura" value="{{ $data_fatura }}">
 
           <div class="card card-primary">
-            <div class="card-header">
-              <h3 class="card-title">
-                <i class="fas fa-list"></i>
-                Transações para Importar
-              </h3>
-            </div>
+
 
             <div class="card-body p-0">
               <div class="table-responsive">
-                <table class="table table-striped table-bordered table-hover">
-                  <thead>
-                    <tr>
-                      <th style="width: 3%;">
-                        <input type="checkbox" id="select-all" checked>
-                      </th>
-                      <th style="width: 4%;">#</th>
-                      <th style="width: 18%;">Descrição Original</th>
-                      <th style="width: 18%;">Descrição Editável</th>
-                      <th style="width: 12%;">Valor</th>
-                      <th style="width: 17%;">Categoria</th>
-                      <th style="width: 10%;">Tipo</th>
-                      <th style="width: 18%;">Pessoa</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+
+<div class="t-section" id="sec-fatura-202607-wrap" style="margin-bottom:0;">
+<div class="t-sec-head" style="background:#065F46" onclick="toggleSec('fatura-202607')">
+  <span>📄</span>
+  <span>Julho 2026 — Fatura atual</span>
+  <span class="t-sec-count">100 lançamentos</span>
+  <span style="margin-left:8px;font-size:12px;opacity:.8;">R$ 20.375,84</span>
+  <span class="t-sec-caret up" id="car-fatura-202607">▼</span>
+</div>
+
                     @php
                       $sortedTransactions = $transactions->sortBy(function($t) {
                         if ($t['is_duplicada'] ?? false) return 0;
@@ -127,111 +85,81 @@
                         : (($transaction['is_duplicada_por_valor'] ?? false) ? 1
                         : (($transaction['is_duplicada_por_valor_aproximado'] ?? false) ? 2 : 3));
                     @endphp
-                    @if($group !== $currentGroup)
-                      @php $currentGroup = $group; @endphp
-                      <tr>
-                        <td colspan="8" class="text-white font-weight-bold py-1 px-3"
-                            style="background-color: {{ $group === 0 ? '#b8860b' : ($group === 1 ? '#c0732a' : ($group === 2 ? '#2a72a8' : '#2d7a2d')) }}; font-size: 13px;">
-                          <i class="{{ $groups[$group]['icon'] }}"></i> {{ $groups[$group]['label'] }}
-                        </td>
-                      </tr>
-                    @endif
-                    <tr class="{{ $transaction['is_duplicada'] ? 'table-warning' : ($transaction['is_duplicada_por_valor'] ? 'tr-valor-similar' : ($transaction['is_duplicada_por_valor_aproximado'] ? 'tr-valor-aproximado' : '')) }}">
-                      <td class="text-center">
-                        <input type="checkbox" 
-                               class="import-checkbox" 
-                               name="transacoes[{{ $loop->index }}][importar]" 
-                               value="1" 
-                               {{ $transaction['is_duplicada'] || $transaction['is_duplicada_por_valor'] ? '' : 'checked' }}>
-                      </td>
-                      
-                      <td>
-                        {{ $loop->iteration }}
-                      </td>
-                      
-                      <td>
-                        <input type="text" 
-                               class="form-control form-control-sm" 
-                               name="transacoes[{{ $loop->index }}][descricao_banco]" 
-                               value="{{ $transaction['descricao_banco'] }}" 
-                               readonly>
 
-                          @if($transaction['installment'] ?? null)
-                            @php $inst = $transaction['installment']; @endphp
-                            <span class="badge badge-info mt-1">
-                              Parcela {{ $inst['current'] }}/{{ $inst['total'] }}
-                            </span>
-                          @endif
 
-                          @if($transaction['is_duplicada'])
-                            <span class="">Já existe no sistema (chave duplicada)</span>
-                          @elseif($transaction['is_duplicada_por_valor'])
-                            <span class="">Mesmo valor já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_descricao'] }}</span>
-                          @elseif($transaction['is_duplicada_por_valor_aproximado'])
-                            <span class="">Valor aproximado (sem centavos) já lançado neste mês para este cartão: {{ $transaction['duplicada_por_valor_aproximado_descricao'] }}</span>
-                          @endif
-                      </td>
-                      
-                      <td>
-                        <input type="text" 
-                               class="form-control form-control-sm" 
-                               name="transacoes[{{ $loop->index }}][descricao]" 
-                               value="{{ $transaction['descricao_banco'] }}">
-                      </td>
-                      
-                      <td>
-                        <input type="number" 
-                               class="form-control form-control-sm" 
-                               name="transacoes[{{ $loop->index }}][valor]" 
-                               value="{{ $transaction['valor'] }}" 
-                               step="0.01" 
-                               {{ $transaction['is_duplicada'] ? '' : 'required' }}>
-                      </td>
-                      
-                      <td>
-                        <select class="form-control form-control-sm categoria-select" 
-                                name="transacoes[{{ $loop->index }}][id_categoria]"
-                                data-index="{{ $loop->index }}"
-                                data-key="{{ $transaction['_key'] ?? $loop->index }}"
-                                {{ $transaction['is_duplicada'] ? '' : 'required' }}>
-                          <option value="">Selecione</option>
-                          @foreach ($categorias as $categoria)
-                            <option value="{{ $categoria->id }}">{{ $categoria->nome }}</option>
-                          @endforeach
-                        </select>
-                      </td>
-                      
-                      <td>
-                        <select class="form-control form-control-sm tipo-select" 
-                                name="transacoes[{{ $loop->index }}][tipo]" 
-                                data-index="{{ $loop->index }}"
-                                data-key="{{ $transaction['_key'] ?? $loop->index }}"
-                                {{ $transaction['is_duplicada'] ? '' : 'required' }}>
-                          <option value="despesa" {{ $transaction['tipo_lancamento'] == 'despesa' ? 'selected' : '' }}>Despesa</option>
-                          <option value="receita" {{ $transaction['tipo_lancamento'] == 'receita' ? 'selected' : '' }}>Receita</option>
-                          <option value="emprestimo" {{ $transaction['tipo_lancamento'] == 'emprestimo' ? 'selected' : '' }}>Empréstimo</option>
-                        </select>
-                      </td>
-                      
-                      <td>
-                        <select class="form-control form-control-sm pessoa-select" 
-                                name="transacoes[{{ $loop->index }}][id_cliente]" 
-                                id="pessoa-{{ $loop->index }}" 
-                                style="display: none;">
-                          <option value="">Selecione</option>
-                          @foreach ($pessoas as $pessoa)
-                            <option value="{{ $pessoa->id }}">{{ $pessoa->nome }}</option>
-                          @endforeach
-                        </select>
-                      </td>
-                      
-                      <input type="hidden" name="transacoes[{{ $loop->index }}][id_cartao]" value="{{ $id_cartao }}">
-                      <input type="hidden" name="transacoes[{{ $loop->index }}][data_banco]" value="{{ $transaction['data_banco'] ?? '' }}">
-                      <input type="hidden" name="transacoes[{{ $loop->index }}][chave_banco]" value="{{ $transaction['chave_banco'] ?? '' }}">
-                    </tr>
-                    @endforeach
-                  </tbody>
-                </table>
+
+<div class="t-row" id="row-0" onclick="toggleExpand(0)">
+  <input type="hidden" 
+          name="transacoes[{{ $loop->index }}][descricao_banco]" 
+          value="{{ $transaction['descricao_banco'] }}" 
+          readonly>
+
+  <input type="hidden" name="transacoes[{{ $loop->index }}][valor]" 
+          value="{{ $transaction['valor'] }}" 
+          {{ $transaction['is_duplicada'] ? '' : 'required' }}>
+
+  <input type="checkbox" class="t-row-cb cb" id="cb-0" name="transacoes[{{ $loop->index }}][importar]" value="1" {{ $transaction['is_duplicada'] || $transaction['is_duplicada_por_valor'] ? '' : 'checked' }}>
+  <span class="t-row-desc ">
+
+  <input type="text" 
+        class="form-control form-control-sm" 
+        name="transacoes[{{ $loop->index }}][descricao]" 
+        value="{{ $transaction['descricao_banco'] }}">
+
+  @if($transaction['is_duplicada'])
+    <div class="t-expand-alert" style="background:#FEF2F2;border-color:#FCA5A5;color:#7F1D1D;">
+    Já existe no sistema (chave duplicada)
+    </div>
+  @elseif($transaction['is_duplicada_por_valor'])
+    <div class="t-expand-alert" style="background:#FEF2F2;border-color:#FCA5A5;color:#7F1D1D;">
+      Possível duplicata com: <strong>{{ $transaction['duplicada_por_valor_descricao'] }} [R$ {{ $transaction['duplicada_por_valor_valor'] }}]</strong><br>
+    </div>
+  @elseif($transaction['is_duplicada_por_valor_aproximado'])
+    <div class="t-expand-alert" style="background:#FEF2F2;border-color:#FCA5A5;color:#7F1D1D;">
+      Possível duplicata com: <strong>{{ $transaction['duplicada_por_valor_aproximado_descricao'] }}  [R$ {{ $transaction['duplicada_por_valor_aproximado_valor'] }}]</strong><br>
+    </div>
+  @endif
+
+
+  </span>
+  <span class="t-row-val">R$ {{ $transaction['valor'] }}</span>
+  
+
+  <select class="tipo-select t-row-sel tipo-se" 
+          name="transacoes[{{ $loop->index }}][tipo]" 
+          data-index="{{ $loop->index }}"
+          data-key="{{ $transaction['_key'] ?? $loop->index }}"
+          {{ $transaction['is_duplicada'] ? '' : 'required' }}>
+    <option value="despesa" {{ $transaction['tipo_lancamento'] == 'despesa' ? 'selected' : '' }}>Despesa</option>
+    <option value="receita" {{ $transaction['tipo_lancamento'] == 'receita' ? 'selected' : '' }}>Receita</option>
+    <option value="emprestimo" {{ $transaction['tipo_lancamento'] == 'emprestimo' ? 'selected' : '' }}>Empréstimo</option>
+  </select>
+
+  <select class="t-row-sel cat-sel" id="cat-0" 
+          name="transacoes[{{ $loop->index }}][id_categoria]"
+          data-index="{{ $loop->index }}"
+          data-key="{{ $transaction['_key'] ?? $loop->index }}"
+          {{ $transaction['is_duplicada'] ? '' : 'required' }}>
+    <option value="">Selecione</option>
+    @foreach ($categorias as $categoria)
+      <option value="{{ $categoria->id }}">{{ $categoria->nome }}</option>
+    @endforeach
+  </select>
+
+  <select class="t-row-sel tipo-se" 
+          name="transacoes[{{ $loop->index }}][id_cliente]" 
+          id="pessoa-{{ $loop->index }}" 
+          style="display: none;">
+    <option value="">Selecione</option>
+    @foreach ($pessoas as $pessoa)
+      <option value="{{ $pessoa->id }}">{{ $pessoa->nome }}</option>
+    @endforeach
+  </select>
+</div>
+
+@endforeach
+</div>
+
               </div>
             </div>
 
@@ -450,6 +378,40 @@
   .tr-valor-aproximado:hover {
     background-color: #cce6f8 !important;
   }
+
+    .t-expand-alert { border-left: 3px solid; padding: 8px 10px; border-radius: 0 6px 6px 0; font-size: 12px; margin: 5px 0 10px 0; }
+
+    /* TOPBAR INFO */
+    .t-topbar { background: linear-gradient(135deg,#1B5E5C,#2D8B86); padding: 12px 20px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .t-topbar h2 { color: white; font-size: 15px; font-weight: 600; margin: 0; }
+    .t-topbar-meta { color: rgba(255,255,255,.65); font-size: 12px; margin-top: 2px; }
+    .t-topbar-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .t-topbar-pill { background: rgba(255,255,255,.15); color: white; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+
+   /* SECTION */
+    .t-section { background: white; border-radius: 10px; overflow: hidden; }
+    .t-sec-head { padding: 11px 16px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; color: white; font-size: 13px; font-weight: 600; }
+    .t-sec-head:hover { filter: brightness(1.06); }
+    .t-sec-count { background: rgba(255,255,255,.2); font-size: 11px; padding: 1px 8px; border-radius: 20px; }
+    .t-sec-caret { margin-left: auto; font-size: 16px; transition: transform .2s; }
+    .t-sec-caret.up { transform: rotate(180deg); }
+    .t-sec-body { display: none; }
+    .t-sec-body.open { display: block; }
+
+   /* ROW */
+    .t-row-wrap { border-bottom: 0.5px solid #F0F0F0; }
+    .t-row-wrap:last-child { border-bottom: none; }
+    .t-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; transition: background .1s; }
+    .t-row:hover { background: #FAFAFA; }
+    .t-row.selected { background: #E8F5F3 !important; }
+
+    .t-row-cb { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+    .t-row-date { font-size: 11px; color: #888; width: 54px; flex-shrink: 0; white-space: nowrap; }
+    .t-row-desc { flex: 1; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .t-row-val { font-size: 13px; font-weight: 600; white-space: nowrap; color: #1A1A1A; min-width: 80px; text-align: right; }
+    .t-row-badge { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 20px; border: 0.5px solid; white-space: nowrap; flex-shrink: 0; }
+    .t-row-sel { font-size: 11px; padding: 4px 7px; border: 0.5px solid #DDD; border-radius: 6px; background: white; cursor: pointer; color: #333; }
+    .t-row-sel:focus { outline: none; border-color: #2D8B86; }
 </style>
 
 <script>

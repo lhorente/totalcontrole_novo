@@ -101,7 +101,11 @@ class Transaction extends Model
           $lendings[$id_cliente] = new \StdClass;
           $lendings[$id_cliente]->total = 0;
           $lendings[$id_cliente]->total_pending = 0;
-          $lendings[$id_cliente]->contact_name = $_lending->contact->nome;
+          if (isset($_lending->contact) && $_lending->contact){
+            $lendings[$id_cliente]->contact_name = $_lending->contact->nome;
+          } else {
+            $lendings[$id_cliente]->contact_name = "";
+          }
         }
 
         $lendings[$id_cliente]->total += $_lending->valor;
