@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\Scopes\CurrentUserScope;
+use Carbon\Carbon;
 
 class Transaction extends Model
 {
@@ -227,5 +228,28 @@ class Transaction extends Model
     }
 
     return $query->get();
+  }
+
+  /**
+   * Gera a chave_banco usada para identificar/deduplicar transações importadas.
+   * Formato: dataBanco(Y-m-d)|descricao|valor|dataFatura(Y-m)
+   * dataFatura usa apenas ano-mês para que chaves geradas em dias diferentes
+   * do mesmo mês sejam consideradas idênticas.
+   */
+  public static function generateChaveBanco(string $dataBanco, string $descricao, float|string $valor, string $dataFatura): string
+  {
+    try {
+      $dataBancoNorm = $dataBanco ? Carbon::parse($dataBanco)->format('Y-m-d') : '';
+    } catch (\Throwable) {
+      $dataBancoNorm = $dataBanco;
+    }
+
+    try {
+      $dataFaturaNorm = $dataFatura ? Carbon::parse($dataFatura)->format('Y-m') : '';
+    } catch (\Throwable) {
+      $dataFaturaNorm = $dataFatura;
+    }
+
+    return md5($dataBancoNorm . '|' . $descricao . '|' . $valor . '|' . $dataFaturaNorm);
   }
 }

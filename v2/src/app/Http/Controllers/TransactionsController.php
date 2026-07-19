@@ -788,8 +788,7 @@ class TransactionsController extends Controller
       $dataBanco = $transaction['data_banco'] ?? '';
       $descricao = $transaction['descricao_banco'] ?? '';
       $valor = $transaction['valor'] ?? 0;
-      //$chaveBanco = md5($dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura);
-      $chaveBanco = $dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura;
+      $chaveBanco = Transaction::generateChaveBanco($dataBanco, $descricao, $valor, $dataFatura);
       
       // Verifica se já existe pela chave_banco
       $isDuplicada = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
@@ -841,7 +840,7 @@ class TransactionsController extends Controller
     $pessoas = Contact::where('id_usuario', Auth::id())->get();
 
     // --- Installment suggestions ---
-    // Group future installments by source transaction index.
+    // Group future installments by future billing month.
     $installmentGroups = [];
     foreach ($transactions as $index => $transaction) {
       $inst = $transaction['installment'] ?? null;
@@ -849,7 +848,6 @@ class TransactionsController extends Controller
         continue;
       }
 
-      $futures = [];
       $remaining = $inst['total'] - $inst['current'];
       for ($i = 1; $i <= $remaining; $i++) {
         $futureParcel = $inst['current'] + $i;
@@ -860,9 +858,10 @@ class TransactionsController extends Controller
         );
         $futureDate   = Carbon::parse($dataFatura)->addMonths($i);
         $futureVal    = $transaction['valor'];
+        $mesAno       = $futureDate->format('Y-m');
 
         // Chave futura (sem data_banco pois é gerada, não vem do CSV)
-        $futureChave = '' . '|' . $futureDesc . '|' . $futureVal . '|' . $futureDate->format('Y-m-d');
+        $futureChave = Transaction::generateChaveBanco($mesAno, $futureDesc, $futureVal, $futureDate->format('Y-m-d'));
 
         $futureDupChave = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                      ->where('chave_banco', $futureChave)
@@ -893,7 +892,16 @@ class TransactionsController extends Controller
           : null;
         $futureDupValorAprox = $futureSimilarAprox !== null;
 
-        $futures[] = [
+        if (!isset($installmentGroups[$mesAno])) {
+          $installmentGroups[$mesAno] = [
+            'mes_ano'      => $mesAno,
+            'data'         => $futureDate->format('Y-m-d'),
+            'installments' => [],
+          ];
+        }
+
+        $installmentGroups[$mesAno]['installments'][] = [
+          'source_index'    => $index,
           'parcel'          => $futureParcel,
           'total'           => $inst['total'],
           'descricao_banco' => $futureDesc,
@@ -901,6 +909,8 @@ class TransactionsController extends Controller
           'valor'           => $futureVal,
           'data'            => $futureDate->format('Y-m-d'),
           'id_cartao'       => $idCartao,
+          'data_banco'       => $transaction['data_banco'],
+          'chave_banco'     => $futureChave,
           // Duplicate flags
           'is_duplicada'                           => $futureDupChave,
           'is_duplicada_por_valor'                 => $futureDupValor,
@@ -913,16 +923,10 @@ class TransactionsController extends Controller
               : null,
         ];
       }
-
-      $installmentGroups[$index] = [
-        'source_desc'  => $transaction['descricao_banco'],
-        'source_index' => $index,
-        'valor'        => $transaction['valor'],
-        'current'      => $inst['current'],
-        'total'        => $inst['total'],
-        'futures'      => $futures,
-      ];
     }
+
+    // Sort groups chronologically
+    ksort($installmentGroups);
 
     return view('transactions/importPreview', [
       'transactions'      => $transactions,
@@ -987,7 +991,7 @@ class TransactionsController extends Controller
       $dataFaturaTransacaoCarbon = Carbon::parse($dataFaturaTransacao);
 
       // Generate chave_banco
-      $chaveBanco = md5($dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFaturaTransacao);
+      $chaveBanco = Transaction::generateChaveBanco($dataBanco, $descricao, $valor, $dataFaturaTransacao);
 
       // Check exact duplicate by chave_banco
       $transacaoDuplicada = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
@@ -1162,7 +1166,7 @@ class TransactionsController extends Controller
           $dataBanco = $item['data_banco'] ?? '';
           $descricao = $item['descricao_banco'] ?? '';
           $valor = $item['valor'] ?? 0;
-          $chaveBanco = $dataBanco . '|' . $descricao . '|' . $valor . '|' . $dataFatura;
+          $chaveBanco = Transaction::generateChaveBanco($dataBanco, $descricao, $valor, $dataFatura);
         }
 
         // Verifica se já existe uma transação com essa chave
@@ -1199,7 +1203,21 @@ class TransactionsController extends Controller
           continue;
         }
 
+        // Usa a chave_banco que já foi calculada na preview
+        $chaveBancoFut = $pf['chave_banco'] ?? null;
+        
+        // Se não tiver chave, gera uma nova (fallback)
+        // Usa a data da parcela futura como mês de referência da fatura
+        if (!$chaveBancoFut) {
+          $dataBancoFut  = $pf['data_banco']     ?? '';
+          $descricaoFut  = $pf['descricao_banco'] ?? '';
+          $valorFut      = $pf['valor']           ?? 0;
+          $dataFaturaFut = $pf['data']            ?? $dataFatura;
+          $chaveBancoFut = Transaction::generateChaveBanco($dataBancoFut, $descricaoFut, $valorFut, $dataFaturaFut);
+        }
+
         Transaction::create([
+
           'id_categoria'    => $pf['id_categoria'] ?: null,
           'descricao_banco' => $pf['descricao_banco'] ?? '',
           'descricao'       => $pf['descricao'] ?? '',
@@ -1208,9 +1226,10 @@ class TransactionsController extends Controller
           'id_cartao'       => $pf['id_cartao'] ?? null,
           'id_caixa'        => $idCaixa,
           'tipo'            => $pf['tipo'] ?? 'despesa',
-          'id_cliente'      => null,
+          'id_cliente'      => $pf['id_cliente'] ?? null,
           'id_usuario'      => Auth::id(),
           'id_workspace'    => $workspaceId,
+          'chave_banco'     => $chaveBancoFut,
         ]);
         $parcelasCount++;
       }
