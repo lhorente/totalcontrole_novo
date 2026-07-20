@@ -43,10 +43,45 @@
             </h3>
           </div>
 
-          <form action="{{ route('transactions.importPreview') }}" method="POST" enctype="multipart/form-data">
+          <form action="{{ route('transactions.importPreview') }}" method="POST" enctype="multipart/form-data" id="import-form">
             @csrf
 
             <div class="card-body">
+
+              {{-- Cartão e data da fatura --}}
+              <div class="form-group">
+                <label>Cartão de Crédito</label>
+                <input type="hidden" id="id_cartao" name="id_cartao">
+                <div class="d-flex flex-wrap" style="gap:.5rem;" id="cartao-picker">
+                  @foreach ($cartoes as $cartao)
+                    <div class="cartao-card border rounded py-2 px-3"
+                         style="cursor:pointer; user-select:none; transition: background .15s, border-color .15s;"
+                         data-id="{{ $cartao->id }}"
+                         data-nome="{{ $cartao->descricao }}">
+                      <i class="fas fa-credit-card mr-1"></i> {{ $cartao->descricao }}
+                    </div>
+                  @endforeach
+                </div>
+                <small class="form-text text-muted">Clique no cartão desejado.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="data_fatura">Data da Fatura</label>
+                <input type="date" class="form-control" id="data_fatura" name="data_fatura" required>
+              </div>
+
+              {{-- Gerar prompt para IA --}}
+              <div class="d-flex align-items-center justify-content-between flex-wrap mt-3 mb-3 rounded px-3 py-2"
+                   style="gap:.75rem; background-color:#e8f4fd; border:1px solid #17a2b8;">
+                <div>
+                  <strong><i class="fas fa-robot"></i> Gerar arquivo com IA</strong><br>
+                  <small class="text-muted">Cole na IA junto com o PDF da fatura. Ela devolve um <strong>.csv</strong> pronto para importar abaixo.</small>
+                </div>
+                <button type="button" class="btn btn-sm" id="btn-copy-prompt"
+                        style="background-color:#17a2b8; border-color:#17a2b8; color:#fff;">
+                  <i class="fas fa-copy"></i> Copiar prompt
+                </button>
+              </div>
 
               {{-- Seleção do método de entrada --}}
               <div class="form-group">
@@ -61,41 +96,17 @@
                 </div>
               </div>
 
-              {{-- Gerar prompt para IA --}}
-              <div class="card card-outline card-info mt-3 mb-3">
-                <div class="card-header">
-                  <h3 class="card-title"><i class="fas fa-robot"></i> Gerar arquivo com IA</h3>
-                </div>
-                <div class="card-body">
-                  <div class="form-group mb-2">
-                    <label for="cartao_prompt">Cartão de crédito</label>
-                    <select class="form-control" id="cartao_prompt">
-                      <option value="">Selecione um cartão</option>
-                      @foreach ($cartoes as $cartao)
-                        <option value="{{ $cartao->descricao }}">{{ $cartao->descricao }}</option>
-                      @endforeach
-                    </select>
-                  </div>
-                  <button type="button" class="btn btn-info" id="btn-copy-prompt">
-                    <i class="fas fa-copy"></i> Copiar prompt
-                  </button>
-                  <small class="form-text text-muted mt-2">
-                    Cole na IA junto com o PDF da fatura. Ela devolve um <strong>.csv</strong> pronto para importar abaixo.
-                  </small>
-                </div>
-              </div>
-
               {{-- Seção: upload de arquivo --}}
               <div id="section-file">
                 <div class="form-group">
-                  <label for="file">Arquivo CSV ou JSON</label>
+                  <label for="file">Arquivo CSV</label>
                   <div class="input-group">
                     <div class="custom-file">
-                      <input type="file" class="custom-file-input" id="file" name="file" accept=".csv,.json">
+                      <input type="file" class="custom-file-input" id="file" name="file" accept=".csv,.txt">
                       <label class="custom-file-label" for="file">Escolher arquivo</label>
                     </div>
                   </div>
-                  <small class="form-text text-muted">Selecione um arquivo <strong>.csv</strong> ou <strong>.json</strong> (gerado pelo Claude) contendo as transações.</small>
+                  <small class="form-text text-muted">Selecione um arquivo <strong>.csv</strong> contendo as transações.</small>
                 </div>
               </div>
 
@@ -108,20 +119,6 @@
                 </div>
               </div>
 
-              <div class="form-group">
-                <label for="id_cartao">Cartão de Crédito</label>
-                <select class="form-control" id="id_cartao" name="id_cartao" required>
-                  <option value="">Selecione um cartão</option>
-                  @foreach ($cartoes as $cartao)
-                    <option value="{{ $cartao->id }}">{{ $cartao->descricao }}</option>
-                  @endforeach
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="data_fatura">Data da Fatura</label>
-                <input type="date" class="form-control" id="data_fatura" name="data_fatura" required>
-              </div>
             </div>
 
             <div class="card-footer">
@@ -141,10 +138,38 @@
 </div>
 
 <script>
-  var sectionFile = document.getElementById('section-file');
-  var sectionText = document.getElementById('section-text');
-  var fileInput   = document.getElementById('file');
-  var textInput   = document.getElementById('csv_content');
+  var sectionFile  = document.getElementById('section-file');
+  var sectionText  = document.getElementById('section-text');
+  var fileInput    = document.getElementById('file');
+  var textInput    = document.getElementById('csv_content');
+  var cartaoInput  = document.getElementById('id_cartao');
+
+  // Cartão picker
+  document.querySelectorAll('.cartao-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      document.querySelectorAll('.cartao-card').forEach(function(c) {
+        c.style.backgroundColor = '';
+        c.style.borderColor     = '';
+        c.style.color           = '';
+        c.style.fontWeight      = '';
+      });
+      card.style.backgroundColor = '#e8f4fd';
+      card.style.borderColor     = '#17a2b8';
+      card.style.color           = '#17a2b8';
+      card.style.fontWeight      = '600';
+      cartaoInput.value          = card.dataset.id;
+      cartaoInput.dataset.nome   = card.dataset.nome;
+    });
+  });
+
+  // Valida cartão selecionado no submit
+  document.getElementById('import-form').addEventListener('submit', function(e) {
+    if (!cartaoInput.value) {
+      e.preventDefault();
+      alert('Selecione um cartão antes de avançar.');
+      document.getElementById('cartao-picker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
 
   // Atualiza o label do custom-file ao selecionar arquivo
   fileInput.addEventListener('change', function(e) {
@@ -171,8 +196,8 @@
   });
 
   document.getElementById('btn-copy-prompt').addEventListener('click', function() {
-    var cartao = document.getElementById('cartao_prompt').value;
-    if (!cartao) {
+    var cartao = cartaoInput.dataset.nome || '';
+    if (!cartaoInput.value) {
       alert('Selecione um cartão antes de copiar o prompt.');
       return;
     }
@@ -197,10 +222,8 @@ var prompt = 'Analise a fatura do cartão "' + cartao + '" (Bradesco) que estou 
       var btn = document.getElementById('btn-copy-prompt');
       var original = btn.innerHTML;
       btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
-      btn.classList.replace('btn-info', 'btn-success');
       setTimeout(function() {
         btn.innerHTML = original;
-        btn.classList.replace('btn-success', 'btn-info');
       }, 2000);
     }).catch(function() {
       alert('Não foi possível copiar. Tente manualmente.');
