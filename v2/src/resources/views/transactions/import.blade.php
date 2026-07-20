@@ -102,9 +102,9 @@
               {{-- Seção: colar conteúdo --}}
               <div id="section-text" style="display:none;">
                 <div class="form-group">
-                  <label for="json_content">Conteúdo JSON</label>
-                  <textarea class="form-control" id="json_content" name="json_content" rows="10" placeholder="Cole aqui o conteúdo JSON gerado pelo Claude..."></textarea>
-                  <small class="form-text text-muted">Cole o conteúdo JSON diretamente na caixa acima.</small>
+                  <label for="csv_content">Conteúdo CSV</label>
+                  <textarea class="form-control" id="csv_content" name="csv_content" rows="10" placeholder="Cole aqui o conteúdo CSV gerado pela IA..."></textarea>
+                  <small class="form-text text-muted">Cole o conteúdo CSV diretamente na caixa acima.</small>
                 </div>
               </div>
 
@@ -125,10 +125,7 @@
             </div>
 
             <div class="card-footer">
-              <button type="submit" id="btn-submit-file" class="btn btn-primary" formaction="{{ route('transactions.importPreview') }}">
-                <i class="fas fa-arrow-right"></i> Avançar para Revisão
-              </button>
-              <button type="submit" id="btn-submit-json" class="btn btn-primary" formaction="{{ route('transactions.importPreviewJson') }}" style="display:none">
+              <button type="submit" class="btn btn-primary" formaction="{{ route('transactions.importPreview') }}">
                 <i class="fas fa-arrow-right"></i> Avançar para Revisão
               </button>
               <a href="{{ url('/transactions') }}" class="btn btn-default">
@@ -144,29 +141,16 @@
 </div>
 
 <script>
-  var sectionFile   = document.getElementById('section-file');
-  var sectionText   = document.getElementById('section-text');
-  var fileInput     = document.getElementById('file');
-  var textInput     = document.getElementById('json_content');
-  var btnSubmitFile = document.getElementById('btn-submit-file');
-  var btnSubmitJson = document.getElementById('btn-submit-json');
+  var sectionFile = document.getElementById('section-file');
+  var sectionText = document.getElementById('section-text');
+  var fileInput   = document.getElementById('file');
+  var textInput   = document.getElementById('csv_content');
 
-  function useJsonSubmit() {
-    btnSubmitFile.style.display = 'none';
-    btnSubmitJson.style.display = '';
-  }
-
-  function useCsvSubmit() {
-    btnSubmitFile.style.display = '';
-    btnSubmitJson.style.display = 'none';
-  }
-
-  // Atualiza o label e detecta se o arquivo é JSON
+  // Atualiza o label do custom-file ao selecionar arquivo
   fileInput.addEventListener('change', function(e) {
     var file = e.target.files[0];
     if (!file) return;
     e.target.nextElementSibling.innerText = file.name;
-    file.name.toLowerCase().endsWith('.json') ? useJsonSubmit() : useCsvSubmit();
   });
 
   document.getElementById('btn-upload').addEventListener('click', function() {
@@ -175,9 +159,6 @@
     fileInput.required = true;
     textInput.required = false;
     textInput.value = '';
-    // Revalida o botão com base no arquivo já selecionado (se houver)
-    var file = fileInput.files[0];
-    (file && file.name.toLowerCase().endsWith('.json')) ? useJsonSubmit() : useCsvSubmit();
   });
 
   document.getElementById('btn-text').addEventListener('click', function() {
@@ -187,7 +168,6 @@
     fileInput.value = '';
     document.querySelector('.custom-file-label').innerText = 'Escolher arquivo';
     textInput.required = true;
-    useJsonSubmit();
   });
 
   document.getElementById('btn-copy-prompt').addEventListener('click', function() {
@@ -198,21 +178,21 @@
     }
 var prompt = 'Analise a fatura do cartão "' + cartao + '" (Bradesco) que estou enviando em PDF e extraia todas as transações.\n\n' +
   'Retorne SOMENTE um arquivo CSV, sem explicações adicionais, com as seguintes colunas:\n' +
-  'data,descricao,valor\n\n' +
+  'data;descricao;valor\n\n' +
   'Regras de leitura do PDF:\n' +
   '- O PDF pode listar mais de um cartão, cada um com seu próprio bloco "Data / Histórico / R$" e linha "Total para [NOME]"; extraia os lançamentos de todos os cartões\n' +
   '- As datas vêm sem ano (DD/MM); use a data do extrato impressa no topo do PDF para inferir o ano: meses iguais ou anteriores ao mês do extrato pertencem ao mesmo ano do extrato, meses posteriores (parcelas antigas, ex: out/nov/dez) pertencem ao ano anterior\n' +
   '- Alguns lançamentos quebram em 3 linhas quando a descrição é longa (nome do estabelecimento em uma linha, "DD/MM valor" na linha seguinte, e o número da parcela tipo "2/5" na linha depois); reconstrua essas quebras como um único lançamento\n' +
-  '- Inclua também as linhas "SALDO ANTERIOR" e "PAGTO. POR DEB EM C/C" (ou equivalentes) como lançamentos normais, na ordem em que aparecem\n\n' +
+  '- NÃO inclua as linhas "SALDO ANTERIOR" e "PAGTO. POR DEB EM C/C" (ou equivalentes); são apenas o saldo transportado e o pagamento da fatura anterior, não são transações do período\n\n' +
   'Regras de formatação da saída:\n' +
   '- data no formato DD/MM/YYYY\n' +
   '- descricao: nome do estabelecimento/lançamento, incluindo o número da parcela quando houver (ex: "MODA INFANTIL TIP TOP 1/3")\n' +
-  '- valor: número decimal com ponto (ex: 49.90)\n' +
-  '- sinal do valor: negativo para lançamentos que aumentam o valor devido (compras e SALDO ANTERIOR); positivo para lançamentos que reduzem o valor devido (pagamentos, estornos, créditos)\n' +
+  '- valor: número decimal com vírgula (ex: 49,90)\n' +
+  '- sinal do valor: positivo para compras; negativo para pagamentos e estornos/créditos\n' +
   '- Não inclua cabeçalho com acento ou espaço\n' +
-  '- Separe os campos por vírgula\n' +
+  '- Separe os campos por ponto e vírgula\n' +
   '- Uma transação por linha\n\n' +
-  'Validação obrigatória antes de responder: some os valores de cada cartão e confira contra "Total para [NOME]" impresso no PDF; some os totais de todos os cartões e confira contra "Total da Fatura em Real". Corrija a extração caso haja divergência.';
+  'Validação obrigatória antes de responder: some os valores de cada cartão (compras positivas) e confira contra "Total para [NOME]" impresso no PDF; some os totais de todos os cartões e confira contra "Total da Fatura em Real". Corrija a extração caso haja divergência.';
     navigator.clipboard.writeText(prompt).then(function() {
       var btn = document.getElementById('btn-copy-prompt');
       var original = btn.innerHTML;

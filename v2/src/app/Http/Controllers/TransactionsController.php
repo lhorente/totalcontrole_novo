@@ -774,11 +774,24 @@ class TransactionsController extends Controller
 
   public function importPreview(ImportCsvRequest $request)
   {
-    $file = $request->file('file');
-    $filePath = $file->getRealPath();
+    $tmpFile = null;
+
+    if ($request->hasFile('file')) {
+      $filePath = $request->file('file')->getRealPath();
+    } else {
+      $csvContent = $request->input('csv_content');
+      $tmpFile    = tempnam(sys_get_temp_dir(), 'csv_import_');
+      file_put_contents($tmpFile, $csvContent);
+      $filePath   = $tmpFile;
+    }
 
     $csvParser = new CsvParserService();
     $transactions = $csvParser->toPreviewArray($filePath);
+
+    if ($tmpFile) {
+      @unlink($tmpFile);
+    }
+
     $dataFatura = $request->input('data_fatura');
     $idCartao = $request->input('id_cartao');
     $dataFaturaCarbon = Carbon::parse($dataFatura);
