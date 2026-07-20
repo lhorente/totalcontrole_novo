@@ -57,17 +57,13 @@
                     <div class="cartao-card border rounded py-2 px-3"
                          style="cursor:pointer; user-select:none; transition: background .15s, border-color .15s;"
                          data-id="{{ $cartao->id }}"
-                         data-nome="{{ $cartao->descricao }}">
+                         data-nome="{{ $cartao->descricao }}"
+                         data-dia-vencimento="{{ $cartao->dia_vencimento }}">
                       <i class="fas fa-credit-card mr-1"></i> {{ $cartao->descricao }}
                     </div>
                   @endforeach
                 </div>
                 <small class="form-text text-muted">Clique no cartão desejado.</small>
-              </div>
-
-              <div class="form-group">
-                <label for="data_fatura">Data da Fatura</label>
-                <input type="date" class="form-control" id="data_fatura" name="data_fatura" required>
               </div>
 
               {{-- Gerar prompt para IA --}}
@@ -81,6 +77,40 @@
                         style="background-color:#17a2b8; border-color:#17a2b8; color:#fff;">
                   <i class="fas fa-copy"></i> Copiar prompt
                 </button>
+              </div>
+
+              {{-- Data da Fatura --}}
+              <div class="form-group">
+                <label>Fatura</label>
+                <input type="hidden" id="data_fatura" name="data_fatura">
+                @php
+                  $meses = [
+                    \Carbon\Carbon::now()->subMonth(),
+                    \Carbon\Carbon::now(),
+                    \Carbon\Carbon::now()->addMonth(),
+                  ];
+                  $nomeMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+                @endphp
+                <div class="d-flex flex-wrap" style="gap:.5rem;" id="mes-picker">
+                  @foreach($meses as $mes)
+                    <div class="mes-card border rounded py-2 px-3"
+                         style="cursor:pointer; user-select:none; transition: background .15s, border-color .15s;"
+                         data-ano="{{ $mes->year }}"
+                         data-mes="{{ $mes->month }}">
+                      <i class="fas fa-calendar-alt mr-1"></i>
+                      {{ $nomeMeses[$mes->month - 1] }} {{ $mes->year }}
+                    </div>
+                  @endforeach
+                  <div class="border rounded py-2 px-3"
+                       style="cursor:pointer; user-select:none; transition: background .15s, border-color .15s;"
+                       id="btn-mes-manual">
+                    <i class="fas fa-pencil-alt mr-1"></i> Outra data
+                  </div>
+                </div>
+                <div id="data-manual-wrapper" style="display:none;" class="mt-2">
+                  <input type="date" class="form-control" id="data_fatura_manual" style="max-width:200px;">
+                </div>
+                <small class="form-text text-muted">Selecione o mês da fatura.</small>
               </div>
 
               {{-- Seleção do método de entrada --}}
@@ -138,11 +168,26 @@
 </div>
 
 <script>
-  var sectionFile  = document.getElementById('section-file');
-  var sectionText  = document.getElementById('section-text');
-  var fileInput    = document.getElementById('file');
-  var textInput    = document.getElementById('csv_content');
-  var cartaoInput  = document.getElementById('id_cartao');
+  var sectionFile     = document.getElementById('section-file');
+  var sectionText     = document.getElementById('section-text');
+  var fileInput       = document.getElementById('file');
+  var textInput       = document.getElementById('csv_content');
+  var cartaoInput     = document.getElementById('id_cartao');
+  var dataFaturaInput = document.getElementById('data_fatura');
+  var diaVencimento   = null;
+
+  // Compõe a data da fatura a partir de ano, mês e dia de vencimento do cartão
+  function setDataFatura(ano, mes) {
+    var dia = diaVencimento || 1;
+    var maxDia = new Date(ano, mes, 0).getDate(); // último dia do mês
+    dia = Math.min(dia, maxDia);
+    dataFaturaInput.value = ano + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+  }
+
+  // Retorna o card de mês atualmente selecionado (se houver)
+  function selectedMesCard() {
+    return document.querySelector('.mes-card[data-selected="1"]');
+  }
 
   // Cartão picker
   document.querySelectorAll('.cartao-card').forEach(function(card) {
@@ -157,17 +202,75 @@
       card.style.borderColor     = '#17a2b8';
       card.style.color           = '#17a2b8';
       card.style.fontWeight      = '600';
-      cartaoInput.value          = card.dataset.id;
-      cartaoInput.dataset.nome   = card.dataset.nome;
+      cartaoInput.value        = card.dataset.id;
+      cartaoInput.dataset.nome = card.dataset.nome;
+      diaVencimento            = parseInt(card.dataset.diaVencimento) || null;
+      // Recalcula a data da fatura se um mês já estiver selecionado
+      var sel = selectedMesCard();
+      if (sel) setDataFatura(parseInt(sel.dataset.ano), parseInt(sel.dataset.mes));
     });
   });
 
-  // Valida cartão selecionado no submit
+  // Mês picker
+  document.querySelectorAll('.mes-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      // Desmarca todos os meses e oculta manual
+      document.querySelectorAll('.mes-card').forEach(function(c) {
+        c.style.backgroundColor = '';
+        c.style.borderColor     = '';
+        c.style.color           = '';
+        c.style.fontWeight      = '';
+        c.dataset.selected      = '';
+      });
+      var manualBtn = document.getElementById('btn-mes-manual');
+      manualBtn.style.backgroundColor = '';
+      manualBtn.style.borderColor     = '';
+      manualBtn.style.color           = '';
+      manualBtn.style.fontWeight      = '';
+      document.getElementById('data-manual-wrapper').style.display = 'none';
+
+      card.style.backgroundColor = '#e8f4fd';
+      card.style.borderColor     = '#17a2b8';
+      card.style.color           = '#17a2b8';
+      card.style.fontWeight      = '600';
+      card.dataset.selected      = '1';
+      setDataFatura(parseInt(card.dataset.ano), parseInt(card.dataset.mes));
+    });
+  });
+
+  // Botão "Outra data"
+  document.getElementById('btn-mes-manual').addEventListener('click', function() {
+    document.querySelectorAll('.mes-card').forEach(function(c) {
+      c.style.backgroundColor = '';
+      c.style.borderColor     = '';
+      c.style.color           = '';
+      c.style.fontWeight      = '';
+      c.dataset.selected      = '';
+    });
+    this.style.backgroundColor = '#e8f4fd';
+    this.style.borderColor     = '#17a2b8';
+    this.style.color           = '#17a2b8';
+    this.style.fontWeight      = '600';
+    document.getElementById('data-manual-wrapper').style.display = '';
+    dataFaturaInput.value = document.getElementById('data_fatura_manual').value || '';
+  });
+
+  document.getElementById('data_fatura_manual').addEventListener('change', function() {
+    dataFaturaInput.value = this.value;
+  });
+
+  // Valida cartão e data no submit
   document.getElementById('import-form').addEventListener('submit', function(e) {
     if (!cartaoInput.value) {
       e.preventDefault();
       alert('Selecione um cartão antes de avançar.');
       document.getElementById('cartao-picker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (!dataFaturaInput.value) {
+      e.preventDefault();
+      alert('Selecione o mês da fatura antes de avançar.');
+      document.getElementById('mes-picker').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   });
 
