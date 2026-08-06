@@ -152,6 +152,7 @@ class TransactionsController extends Controller
                           ->get();
 
     $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
 
@@ -272,6 +273,7 @@ class TransactionsController extends Controller
                           ->get();
 
     $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
 
@@ -381,6 +383,7 @@ class TransactionsController extends Controller
                           ->get();
 
     $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
 
@@ -478,6 +481,7 @@ class TransactionsController extends Controller
                           ->get();
 
     $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
 
@@ -552,6 +556,7 @@ class TransactionsController extends Controller
                           ->get();
 
     $pessoas = Contact::where('id_usuario', Auth::id())
+                       ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
 
@@ -769,7 +774,12 @@ class TransactionsController extends Controller
   {
     $cartoes = CreditCard::where('id_usuario', Auth::id())->where('status', 'ativo')->get();
 
-    return view('transactions/import', compact('cartoes'));
+    $categorias = Category::where('id_workspace', session('active_workspace_id'))
+                          ->where('status', 'a')
+                          ->orderBy('nome')
+                          ->get(['id', 'nome']);
+
+    return view('transactions/import', compact('cartoes', 'categorias'));
   }
 
   public function importPreview(ImportCsvRequest $request)
@@ -850,7 +860,7 @@ class TransactionsController extends Controller
                           ->where('status', 'a')
                           ->orderBy('nome')
                           ->get();
-    $pessoas = Contact::where('id_usuario', Auth::id())->get();
+    $pessoas = Contact::where('id_usuario', Auth::id())->where('status', 'ativo')->get();
 
     // --- Installment suggestions ---
     // Group future installments by future billing month.
@@ -924,6 +934,7 @@ class TransactionsController extends Controller
           'id_cartao'       => $idCartao,
           'data_banco'       => $transaction['data_banco'],
           'chave_banco'     => $futureChave,
+          'id_categoria'    => $transaction['id_categoria'] ?? null,
           // Duplicate flags
           'is_duplicada'                           => $futureDupChave,
           'is_duplicada_por_valor'                 => $futureDupValor,

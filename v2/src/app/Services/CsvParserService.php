@@ -43,12 +43,14 @@ class CsvParserService
 
             $descricao = $row[1] ?? '';
 
+            $idCategoriaCsv = isset($row[3]) ? (int) trim($row[3]) : null;
+
             $data->push([
                 'data_banco' => $row[0] ?? '',
                 'descricao_banco' => $descricao,
                 'valor' => $valorNormalizado,
                 'data' => null,
-                'id_categoria' => '',
+                'id_categoria' => $idCategoriaCsv ?: '',
                 'tipo_lancamento' => 'despesa',
                 'id_pessoa' => null,
                 'installment' => $this->detectInstallment($descricao),

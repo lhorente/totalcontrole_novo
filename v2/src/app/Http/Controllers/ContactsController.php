@@ -37,6 +37,7 @@ class ContactsController extends Controller
       }
 
       $contact->nome = $request->input('nome');
+      $contact->status = $request->input('status');
 
       if ($contact->save()){
         return redirect('/contacts')->with('success', 'Contato salvo com sucesso');

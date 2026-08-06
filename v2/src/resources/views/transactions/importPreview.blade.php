@@ -112,7 +112,7 @@
                     : (($transaction['is_duplicada_por_valor_aproximado'] ?? false) ? 2 : 3));
                   @endphp
 
-                  <div class="t-row" id="row-{{ $loop->index }}" onclick="handleRowClick(event, this)">
+                  <div class="t-row" id="row-{{ $loop->index }}" onclick="handleRowClick(event, this)" data-categoria="{{ $transaction['id_categoria'] }}" data-descricao="{{ $transaction['descricao_banco'] }}">
                     <input type="hidden" name="transacoes[{{ $loop->index }}][chave_banco]" value="{{ $transaction['chave_banco'] }}" readonly>
                     <input type="hidden" name="transacoes[{{ $loop->index }}][data_banco]" value="{{ $transaction['data_banco'] }}" readonly>
                     <input type="hidden" name="transacoes[{{ $loop->index }}][id_cartao]" value="{{ $id_cartao }}" readonly>
@@ -152,7 +152,7 @@
                     <select class="t-row-sel cat-sel" id="cat-0" name="transacoes[{{ $loop->index }}][id_categoria]" data-index="{{ $loop->index }}" data-key="{{ $transaction['_key'] ?? $loop->index }}" {{ $transaction['is_duplicada'] ? '' : 'required' }}>
                       <option value="">Selecione</option>
                       @foreach ($categorias as $categoria)
-                        <option value="{{ $categoria->id }}">{{ $categoria->nome }}</option>
+                        <option value="{{ $categoria->id }}" {{ ($transaction['id_categoria'] ?? '') == $categoria->id ? 'selected' : '' }}>{{ $categoria->nome }}</option>
                       @endforeach
                     </select>
 
@@ -298,7 +298,7 @@
                       data-source-index="{{ $future['source_index'] }}">
                 <option value="">Categoria</option>
                 @foreach($categorias as $cat)
-                  <option value="{{ $cat->id }}">{{ $cat->nome }}</option>
+                  <option value="{{ $cat->id }}" {{ ($future['id_categoria'] ?? '') == $cat->id ? 'selected' : '' }}>{{ $cat->nome }}</option>
                 @endforeach
               </select>
 

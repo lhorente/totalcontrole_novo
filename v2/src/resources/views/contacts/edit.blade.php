@@ -32,10 +32,19 @@
               <input type="hidden" name="id" value="{{ $contact->id }}">
 
               <div class="row">
-                <div class="col-sm-12">
+                <div class="col-sm-8">
                   <div class="form-group">
                     <label>Nome</label>
                     <input type="text" name="nome" class="form-control" placeholder="Nome do contato" value="{{ $contact->nome }}">
+                  </div>
+                </div>
+                <div class="col-sm-4">
+                  <div class="form-group">
+                    <label>Status</label>
+                    <select name="status" class="form-control">
+                      <option value="ativo" {{ $contact->status === 'ativo' ? 'selected' : '' }}>Ativo</option>
+                      <option value="inativo" {{ $contact->status === 'inativo' ? 'selected' : '' }}>Inativo</option>
+                    </select>
                   </div>
                 </div>
               </div>

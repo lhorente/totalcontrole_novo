@@ -168,6 +168,8 @@
 </div>
 
 <script>
+  var categoriasPrompt = @json($categorias->map(fn($c) => $c->id . ' - ' . $c->nome)->join("\n"));
+
   var sectionFile     = document.getElementById('section-file');
   var sectionText     = document.getElementById('section-text');
   var fileInput       = document.getElementById('file');
@@ -304,23 +306,50 @@
       alert('Selecione um cartão antes de copiar o prompt.');
       return;
     }
-var prompt = 'Analise a fatura do cartão "' + cartao + '" (Bradesco) que estou enviando em PDF e extraia todas as transações.\n\n' +
-  'Retorne SOMENTE um arquivo CSV, sem explicações adicionais, com as seguintes colunas:\n' +
-  'data;descricao;valor\n\n' +
-  'Regras de leitura do PDF:\n' +
-  '- O PDF pode listar mais de um cartão, cada um com seu próprio bloco "Data / Histórico / R$" e linha "Total para [NOME]"; extraia os lançamentos de todos os cartões\n' +
-  '- As datas vêm sem ano (DD/MM); use a data do extrato impressa no topo do PDF para inferir o ano: meses iguais ou anteriores ao mês do extrato pertencem ao mesmo ano do extrato, meses posteriores (parcelas antigas, ex: out/nov/dez) pertencem ao ano anterior\n' +
-  '- Alguns lançamentos quebram em 3 linhas quando a descrição é longa (nome do estabelecimento em uma linha, "DD/MM valor" na linha seguinte, e o número da parcela tipo "2/5" na linha depois); reconstrua essas quebras como um único lançamento\n' +
-  '- NÃO inclua as linhas "SALDO ANTERIOR" e "PAGTO. POR DEB EM C/C" (ou equivalentes); são apenas o saldo transportado e o pagamento da fatura anterior, não são transações do período\n\n' +
-  'Regras de formatação da saída:\n' +
-  '- data no formato DD/MM/YYYY\n' +
-  '- descricao: nome do estabelecimento/lançamento, incluindo o número da parcela quando houver (ex: "MODA INFANTIL TIP TOP 1/3")\n' +
-  '- valor: número decimal com vírgula (ex: 49,90)\n' +
-  '- sinal do valor: positivo para compras; negativo para pagamentos e estornos/créditos\n' +
-  '- Não inclua cabeçalho com acento ou espaço\n' +
-  '- Separe os campos por ponto e vírgula\n' +
-  '- Uma transação por linha\n\n' +
-  'Validação obrigatória antes de responder: some os valores de cada cartão (compras positivas) e confira contra "Total para [NOME]" impresso no PDF; some os totais de todos os cartões e confira contra "Total da Fatura em Real". Corrija a extração caso haja divergência.';
+var prompt;
+    if (/nubank/i.test(cartao)) {
+      prompt = 'Analise o arquivo OFX da fatura do cartão "' + cartao + '" (Nubank) que estou enviando e extraia todas as transações.\n\n' +
+        'Retorne SOMENTE um arquivo CSV, sem explicações adicionais, com as seguintes colunas:\n' +
+        'data;descricao;valor;categoria\n\n' +
+        'Regras de leitura do OFX:\n' +
+        '- Cada transação está em um bloco <STMTTRN>...</STMTTRN>, dentro de <BANKTRANLIST>; pode haver mais de um bloco <CCSTMTTRNRS> caso o arquivo traga mais de um cartão/conta — extraia os lançamentos de todos eles\n' +
+        '- A data já vem completa e correta em <DTPOSTED> no formato AAAAMMDD (ex: 20260719); não é necessário inferir o ano\n' +
+        '- A descrição do lançamento está em <MEMO>; use o texto como está, sem tentar completar nomes truncados\n' +
+        '- O tipo em <TRNTYPE> indica DEBIT (compra) ou CREDIT (pagamento/estorno); <TRNAMT> já vem assinado pelo banco (negativo para DEBIT, positivo para CREDIT) — não são 3 linhas quebradas como no PDF, cada <STMTTRN> já é um lançamento completo\n' +
+        '- NÃO inclua lançamentos do tipo CREDIT cujo <MEMO> seja "Pagamento recebido" (ou equivalente); é apenas o pagamento da fatura anterior, não uma transação do período\n' +
+        '- Estornos/créditos legítimos (ex.: devolução de uma compra) devem ser incluídos normalmente\n\n' +
+        'Regras de formatação da saída:\n' +
+        '- data no formato DD/MM/YYYY\n' +
+        '- descricao: texto do <MEMO>, incluindo o número da parcela quando houver\n' +
+        '- valor: número decimal com vírgula (ex: 49,90)\n' +
+        '- sinal do valor: positivo para compras (DEBIT); negativo para pagamentos e estornos/créditos (CREDIT) — inverta o sinal original do OFX, que segue a convenção contábil padrão (oposto da que usamos aqui)\n' +
+        '- Não inclua cabeçalho com acento ou espaço\n' +
+        '- Separe os campos por ponto e vírgula\n' +
+        '- Uma transação por linha\n\n' +
+        '- Na coluna categoria, adicione o ID da categoria, com base na relação de categorias abaixo:\n\n' +
+        categoriasPrompt + '\n\n' +
+        'Validação obrigatória antes de responder: some os valores de compra (DEBIT) e confira contra o <LEDGERBAL><BALAMT> do OFX (em módulo, desconsiderando pagamentos e estornos já excluídos); caso haja mais de um <CCSTMTRS>, some os totais de todos os cartões/contas e confira contra o total geral. Corrija a extração caso haja divergência.';
+    } else {
+      prompt = 'Analise a fatura do cartão "' + cartao + '" (Bradesco) que estou enviando em PDF e extraia todas as transações.\n\n' +
+        'Retorne SOMENTE um arquivo CSV, sem explicações adicionais, com as seguintes colunas:\n' +
+        'data;descricao;valor;categoria\n\n' +
+        'Regras de leitura do PDF:\n' +
+        '- O PDF pode listar mais de um cartão, cada um com seu próprio bloco "Data / Histórico / R$" e linha "Total para [NOME]"; extraia os lançamentos de todos os cartões\n' +
+        '- As datas vêm sem ano (DD/MM); use a data do extrato impressa no topo do PDF para inferir o ano: meses iguais ou anteriores ao mês do extrato pertencem ao mesmo ano do extrato, meses posteriores (parcelas antigas, ex: out/nov/dez) pertencem ao ano anterior\n' +
+        '- Alguns lançamentos quebram em 3 linhas quando a descrição é longa (nome do estabelecimento em uma linha, "DD/MM valor" na linha seguinte, e o número da parcela tipo "2/5" na linha depois); reconstrua essas quebras como um único lançamento\n' +
+        '- NÃO inclua as linhas "SALDO ANTERIOR" e "PAGTO. POR DEB EM C/C" (ou equivalentes); são apenas o saldo transportado e o pagamento da fatura anterior, não são transações do período\n\n' +
+        'Regras de formatação da saída:\n' +
+        '- data no formato DD/MM/YYYY\n' +
+        '- descricao: nome do estabelecimento/lançamento, incluindo o número da parcela quando houver (ex: "MODA INFANTIL TIP TOP 1/3")\n' +
+        '- valor: número decimal com vírgula (ex: 49,90)\n' +
+        '- sinal do valor: positivo para compras; negativo para pagamentos e estornos/créditos\n' +
+        '- Não inclua cabeçalho com acento ou espaço\n' +
+        '- Separe os campos por ponto e vírgula\n' +
+        '- Uma transação por linha\n\n' +
+        '- Na coluna categoria, adicione o ID da categoria, com base na relação de categorias abaixo:\n\n' +
+        categoriasPrompt + '\n\n' +
+        'Validação obrigatória antes de responder: some os valores de cada cartão (compras positivas) e confira contra "Total para [NOME]" impresso no PDF; some os totais de todos os cartões e confira contra "Total da Fatura em Real". Corrija a extração caso haja divergência.';
+    }
     navigator.clipboard.writeText(prompt).then(function() {
       var btn = document.getElementById('btn-copy-prompt');
       var original = btn.innerHTML;

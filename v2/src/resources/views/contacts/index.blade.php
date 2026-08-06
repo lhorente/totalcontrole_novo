@@ -32,6 +32,7 @@
                 <tr>
                   <th style="width: 10px">#</th>
                   <th>Nome</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -40,6 +41,13 @@
                   <td><?php echo $contact->id ?>.</td>
                   <td>
                     <a href="{{ url('/contacts/edit/') }}/<?php echo $contact->id ?>"><?php echo $contact->nome ?></a>
+                  </td>
+                  <td>
+                    <?php if ($contact->status === 'ativo'){ ?>
+                    <span class="badge badge-success">Ativo</span>
+                    <?php } else { ?>
+                    <span class="badge badge-secondary">Inativo</span>
+                    <?php } ?>
                   </td>
                 </tr>
               <?php } ?>

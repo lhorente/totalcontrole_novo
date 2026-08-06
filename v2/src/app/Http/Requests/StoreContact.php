@@ -25,6 +25,7 @@ class StoreContact extends FormRequest
     {
         return [
           'nome' => 'required|max:255',
+          'status' => 'required|in:ativo,inativo',
         ];
     }
 
@@ -38,6 +39,8 @@ class StoreContact extends FormRequest
         return [
             'nome.required' => 'O campo nome é obrigatório',
             'nome.max' => 'O campo nome precisa ter no máximo 255 caracteres',
+            'status.required' => 'O campo status é obrigatório',
+            'status.in' => 'O campo status é inválido',
         ];
     }
 }

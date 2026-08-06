@@ -30,10 +30,19 @@
               @method('POST')
 
               <div class="row">
-                <div class="col-sm-12">
+                <div class="col-sm-8">
                   <div class="form-group">
                     <label>Nome</label>
                     <input type="text" name="nome" class="form-control" placeholder="Nome do contato">
+                  </div>
+                </div>
+                <div class="col-sm-4">
+                  <div class="form-group">
+                    <label>Status</label>
+                    <select name="status" class="form-control">
+                      <option value="ativo">Ativo</option>
+                      <option value="inativo">Inativo</option>
+                    </select>
                   </div>
                 </div>
               </div>
