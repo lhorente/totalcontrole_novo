@@ -110,6 +110,7 @@ return [
         Features::updatePasswords(),
         Features::twoFactorAuthentication([
             'confirmPassword' => true,
+            'confirm' => true,
         ]),
     ],
 
