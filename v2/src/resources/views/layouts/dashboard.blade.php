@@ -100,9 +100,12 @@ scratch. This page gets rid of all links and provides the needed markup only.
             <a href="#" class="dropdown-item">
               <i class="fas fa-envelope mr-2"></i> Faturamento
             </a>
-            <a href="#" class="dropdown-item">
-              <i class="fas fa-envelope mr-2"></i> Sair
-            </a>
+            <form method="POST" action="{{ route('logout') }}">
+              @csrf
+              <button type="submit" class="dropdown-item">
+                <i class="fas fa-envelope mr-2"></i> Sair
+              </button>
+            </form>
           </div>
         </li>
       </ul>
