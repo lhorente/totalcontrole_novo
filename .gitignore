@@ -14,6 +14,7 @@
 /vendor
 /db_data
 /v2/src/vendor
+/v2/src/node_modules
 
 # OS generated files #
 ######################

@@ -1,3 +1,13 @@
+FROM node:18-alpine AS assets
+
+WORKDIR /app
+
+COPY src/package.json src/package-lock.json ./
+RUN npm ci
+
+COPY src/ .
+RUN npm run production
+
 FROM php:8.3-apache
 
 # Instala dependências do sistema
@@ -22,6 +32,11 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 # Copia o código
 COPY src/ /var/www/html
 WORKDIR /var/www/html
+
+# Copia os assets do frontend já compilados (etapa Node acima)
+COPY --from=assets /app/public/js /var/www/html/public/js
+COPY --from=assets /app/public/css/app.css /var/www/html/public/css/app.css
+COPY --from=assets /app/public/mix-manifest.json /var/www/html/public/mix-manifest.json
 
 # Cria diretórios necessários se não existirem
 RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache
