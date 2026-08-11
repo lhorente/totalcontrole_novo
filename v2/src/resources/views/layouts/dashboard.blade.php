@@ -42,7 +42,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
         <!-- Left navbar links -->
         <ul class="navbar-nav">
           <li class="nav-item">
-            <a href="{{ url('/dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url('/') }}" class="nav-link">Início</a>
           </li>
           <li class="nav-item dropdown">
             <a id="dropdownSubMenu1" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="nav-link dropdown-toggle">Financeiro</a>
@@ -94,8 +94,8 @@ scratch. This page gets rid of all links and provides the needed markup only.
             <i class="far fa-user"></i> Willian
           </a>
           <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
-            <a href="#" class="dropdown-item">
-              <i class="fas fa-envelope mr-2"></i> Configurações
+            <a href="{{ route('profile.show') }}" class="dropdown-item">
+              <i class="fas fa-user-cog mr-2"></i> Meu Perfil
             </a>
             <a href="#" class="dropdown-item">
               <i class="fas fa-envelope mr-2"></i> Faturamento
@@ -200,6 +200,8 @@ scratch. This page gets rid of all links and provides the needed markup only.
 <script src="{{ asset('js/main.js') }}"></script>
 
 <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+
+@stack('scripts')
 
 </body>
 </html>

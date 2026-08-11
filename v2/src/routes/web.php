@@ -10,6 +10,7 @@ use App\Http\Controllers\DashboardController;
 
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\SmartposImportController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -83,4 +84,12 @@ Route::middleware(['auth:sanctum', 'verified', 'two_factor.enabled', 'workspace'
   Route::get('/smartpos/import', [SmartposImportController::class, 'index'])->name('smartpos.import');
   Route::post('/smartpos/import/preview', [SmartposImportController::class, 'preview'])->name('smartpos.preview');
   Route::post('/smartpos/import/store', [SmartposImportController::class, 'store'])->name('smartpos.store');
+});
+
+// Perfil do usuário: fora do middleware two_factor.enabled de propósito, pois é
+// nesta tela que o usuário ativa o 2FA (evita loop de redirecionamento).
+Route::middleware(['auth:sanctum', 'verified', 'workspace'])->group(function () {
+  Route::get('/user/profile', [ProfileController::class, 'show'])->name('profile.show');
+  Route::delete('/user/other-browser-sessions', [ProfileController::class, 'destroyOtherBrowserSessions'])->name('other-browser-sessions.destroy');
+  Route::delete('/user', [ProfileController::class, 'destroy'])->name('current-user.destroy');
 });
