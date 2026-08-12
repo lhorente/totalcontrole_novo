@@ -32,7 +32,7 @@
         <a href="{{ $prevUrl ?? route('transactions.month', [$beforeMonthObj->format('Y'), (int)$beforeMonthObj->format('m')]) }}" class="btn btn-sm btn-outline-secondary">
           <i class="fa fa-chevron-left"></i> {{ $beforeMonthObj->format('M/Y') }}
         </a>
-        <strong class="align-self-center">
+        <strong class="align-self-center" id="current-month-label">
           @php $meses = [1=>'Janeiro',2=>'Fevereiro',3=>'Março',4=>'Abril',5=>'Maio',6=>'Junho',7=>'Julho',8=>'Agosto',9=>'Setembro',10=>'Outubro',11=>'Novembro',12=>'Dezembro']; @endphp
           {{ $meses[$month] ?? $month }} / {{ $year }}
         </strong>
@@ -473,6 +473,7 @@
           <button type="button" class="btn btn-outline-secondary active" data-fmt="csv">CSV</button>
           <button type="button" class="btn btn-outline-secondary" data-fmt="json">JSON</button>
           <button type="button" class="btn btn-outline-secondary" data-fmt="md">Markdown</button>
+          <button type="button" class="btn btn-outline-secondary" data-fmt="image">Imagem</button>
         </div>
         <div class="d-flex flex-column" style="gap:.5rem">
           <button type="button" class="btn btn-primary btn-block" id="export-do-download">
@@ -485,6 +486,7 @@
         <div id="export-copy-feedback" class="mt-2 text-center text-success" style="display:none; font-size:.85em">
           <i class="fas fa-check mr-1"></i> Copiado!
         </div>
+        <canvas id="export-image-canvas" style="display:none"></canvas>
       </div>
     </div>
   </div>
@@ -873,6 +875,149 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () { el.style.display = 'none'; }, 2000);
   }
 
+  function formatMoneyBRL(v) {
+    var n     = parseFloat(v) || 0;
+    var sign  = n < 0 ? '-' : '';
+    var fixed = Math.abs(n).toFixed(2);
+    var parts = fixed.split('.');
+    parts[0]  = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return sign + 'R$ ' + parts[0] + ',' + parts[1];
+  }
+
+  var EXPORT_TYPE_COLORS = {
+    lucro:                 '#28a745',
+    despesa:                '#dc3545',
+    transferencia:          '#6c757d',
+    emprestimo:             '#e0a800',
+    pagamento_emprestimo:   '#28a745',
+  };
+
+  function buildExportImageBlob(callback) {
+    var data      = getTransactionData();
+    var canvas    = document.getElementById('export-image-canvas');
+    var ctx       = canvas.getContext('2d');
+    var scale     = 2;
+    var width     = 640;
+    var padding   = 24;
+    var rowHeight = 34;
+    var headerHeight = 96;
+    var footerHeight = 90;
+    var rowsCount = data.length || 1;
+    var height    = headerHeight + rowsCount * rowHeight + footerHeight;
+
+    canvas.width  = width * scale;
+    canvas.height = height * scale;
+    canvas.style.width  = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    var monthLabelEl = document.getElementById('current-month-label');
+    var monthLabel   = monthLabelEl ? monthLabelEl.textContent.trim().replace(/\s+/g, ' ') : '';
+
+    ctx.fillStyle = '#212529';
+    ctx.font      = 'bold 20px Arial, sans-serif';
+    ctx.fillText('Lançamentos' + (monthLabel ? ' — ' + monthLabel : ''), padding, 34);
+
+    ctx.fillStyle = '#6c757d';
+    ctx.font      = '13px Arial, sans-serif';
+    ctx.fillText(data.length + ' lançamento(s)', padding, 54);
+
+    ctx.strokeStyle = '#dee2e6';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, 66);
+    ctx.lineTo(width - padding, 66);
+    ctx.stroke();
+
+    function truncateText(text, maxWidth) {
+      if (ctx.measureText(text).width <= maxWidth) { return text; }
+      var t = text;
+      while (t.length > 0 && ctx.measureText(t + '…').width > maxWidth) {
+        t = t.slice(0, -1);
+      }
+      return t + '…';
+    }
+
+    var y     = headerHeight - rowHeight + 24;
+    var total = 0;
+
+    if (data.length === 0) {
+      ctx.fillStyle = '#6c757d';
+      ctx.font      = '14px Arial, sans-serif';
+      ctx.fillText('Nenhum lançamento encontrado.', padding, y);
+      y += rowHeight;
+    } else {
+      data.forEach(function (row, idx) {
+        var val = parseFloat(row.valor) || 0;
+        total += val;
+
+        if (idx % 2 === 1) {
+          ctx.fillStyle = '#f8f9fa';
+          ctx.fillRect(padding - 8, y - 22, width - (padding - 8) * 2, rowHeight);
+        }
+
+        var dateParts = String(row.data || '').split('-');
+        var dateLabel = dateParts.length === 3 ? dateParts[2] + '/' + dateParts[1] : '';
+        ctx.fillStyle = '#adb5bd';
+        ctx.font      = '12px Arial, sans-serif';
+        ctx.fillText(dateLabel, padding, y);
+
+        var valueText  = formatMoneyBRL(val);
+        ctx.font       = 'bold 13px Arial, sans-serif';
+        var valueWidth = ctx.measureText(valueText).width;
+        var descX      = padding + 46;
+        var descMaxWidth = width - padding - descX - valueWidth - 16;
+
+        ctx.font      = '14px Arial, sans-serif';
+        ctx.fillStyle = '#212529';
+        var desc = truncateText(row.descricao || '(Sem descrição)', descMaxWidth);
+        ctx.fillText(desc, descX, y);
+
+        ctx.font      = 'bold 13px Arial, sans-serif';
+        ctx.fillStyle = EXPORT_TYPE_COLORS[row.tipo] || '#212529';
+        ctx.textAlign = 'right';
+        ctx.fillText(valueText, width - padding, y);
+        ctx.textAlign = 'left';
+
+        y += rowHeight;
+      });
+    }
+
+    y += 14;
+    ctx.strokeStyle = '#212529';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padding, y);
+    ctx.lineTo(width - padding, y);
+    ctx.stroke();
+
+    y += 26;
+    ctx.fillStyle = '#212529';
+    ctx.font      = 'bold 16px Arial, sans-serif';
+    ctx.fillText('Total', padding, y);
+
+    ctx.font      = 'bold 16px Arial, sans-serif';
+    ctx.fillStyle = total < 0 ? '#dc3545' : '#28a745';
+    ctx.textAlign = 'right';
+    ctx.fillText(formatMoneyBRL(total), width - padding, y);
+    ctx.textAlign = 'left';
+
+    y += 24;
+    ctx.fillStyle = '#adb5bd';
+    ctx.font      = '11px Arial, sans-serif';
+    var now = new Date();
+    ctx.fillText(
+      'Gerado em ' + now.toLocaleDateString('pt-BR') + ' às ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      padding,
+      y
+    );
+
+    canvas.toBlob(function (blob) { callback(blob); }, 'image/png');
+  }
+
   function fallbackCopy(text, feedback) {
     var ta = document.createElement('textarea');
     ta.value = text;
@@ -894,14 +1039,58 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   document.getElementById('export-do-download').addEventListener('click', function () {
+    if (exportFmt === 'image') {
+      buildExportImageBlob(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a   = document.createElement('a');
+        a.href     = url;
+        a.download = 'lancamentos.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        $('#modal-export').modal('hide');
+      });
+      return;
+    }
     var result = buildExportContent(exportFmt);
     downloadFile(result.filename, result.content, result.mimeType);
     $('#modal-export').modal('hide');
   });
 
   document.getElementById('export-do-copy').addEventListener('click', function () {
-    var result   = buildExportContent(exportFmt);
     var feedback = document.getElementById('export-copy-feedback');
+
+    if (exportFmt === 'image') {
+      buildExportImageBlob(function (blob) {
+        if (navigator.clipboard && window.ClipboardItem) {
+          navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })])
+            .then(function () { showCopyFeedback(feedback); })
+            .catch(function () {
+              var url = URL.createObjectURL(blob);
+              var a   = document.createElement('a');
+              a.href     = url;
+              a.download = 'lancamentos.png';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            });
+        } else {
+          var url = URL.createObjectURL(blob);
+          var a   = document.createElement('a');
+          a.href     = url;
+          a.download = 'lancamentos.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      });
+      return;
+    }
+
+    var result = buildExportContent(exportFmt);
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(result.content)
         .then(function () { showCopyFeedback(feedback); })
