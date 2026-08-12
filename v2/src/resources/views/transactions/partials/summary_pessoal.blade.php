@@ -133,7 +133,7 @@
             <th class="text-right" style="width:140px">Total</th>
             <th class="text-right d-none d-sm-table-cell" style="width:140px">Pendente</th>
             <th class="text-right d-none d-sm-table-cell" style="width:140px">Recebido</th>
-            <th style="width:90px"></th>
+            <th style="width:115px"></th>
           </tr>
         </thead>
         <tbody>
@@ -143,6 +143,20 @@
             $pessoaTotal  = $group->sum('valor');
             $pessoaReceb  = isset($pagamentosPorPessoa[$idCliente]) ? $pagamentosPorPessoa[$idCliente]->sum('valor') : 0;
             $pessoaPend   = $pessoaTotal - $pessoaReceb;
+
+            $pessoaRowMapper = function ($t) {
+              return [
+                'data'      => $t->data->format('Y-m-d'),
+                'descricao' => $t->descricao ?: ($t->descricao_banco ?: ''),
+                'valor'     => (float) $t->valor,
+                'tipo'      => $t->tipo,
+              ];
+            };
+            $pessoaRows = $group->map($pessoaRowMapper);
+            if (isset($pagamentosPorPessoa[$idCliente])) {
+              $pessoaRows = $pessoaRows->concat($pagamentosPorPessoa[$idCliente]->map($pessoaRowMapper));
+            }
+            $pessoaRows = $pessoaRows->sortBy('data')->values();
           @endphp
           <tr>
             <td>
@@ -165,15 +179,26 @@
                 —
               @endif
             </td>
-            <td class="text-right">
+            <td class="text-right text-nowrap">
+              <div class="btn-group" role="group">
               <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['categoria','cartao','caixa'])), ['t' => 'emprestimo', 'pessoa' => $idCliente])) }}"
                  class="btn btn-xs btn-outline-secondary" title="Ver empréstimos desta pessoa">
                 <i class="fa fa-search fa-xs"></i>
               </a>
               <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['categoria','cartao','caixa'])), ['t' => 'pagamento_emprestimo', 'pessoa' => $idCliente])) }}"
-                 class="btn btn-xs btn-outline-success ml-1" title="Ver pagamentos desta pessoa">
+                 class="btn btn-xs btn-outline-success" title="Ver pagamentos desta pessoa">
                 <i class="fa fa-money-bill-wave fa-xs"></i>
               </a>
+              <button type="button" class="btn btn-xs btn-outline-primary btn-export-person"
+                      title="Copiar imagem para área de transferência"
+                      data-pessoa="{{ $pessoaNome }}"
+                      data-total="{{ $pessoaTotal }}"
+                      data-recebido="{{ $pessoaReceb }}"
+                      data-pendente="{{ $pessoaPend }}"
+                      data-rows="{{ $pessoaRows->toJson() }}">
+                <i class="fa fa-copy fa-xs"></i>
+              </button>
+              </div>
             </td>
           </tr>
           @endforeach

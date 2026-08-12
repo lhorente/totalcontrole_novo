@@ -892,17 +892,33 @@ document.addEventListener('DOMContentLoaded', function () {
     pagamento_emprestimo:   '#28a745',
   };
 
-  function buildExportImageBlob(callback) {
-    var data      = getTransactionData();
+  var EXPORT_TOTAL_COLORS = {
+    success: '#28a745',
+    danger:  '#dc3545',
+    warning: '#e0a800',
+    neutral: '#212529',
+    muted:   '#6c757d',
+  };
+
+  function resolveTotalColor(mode, value) {
+    if (!mode || mode === 'auto') { return value < 0 ? EXPORT_TOTAL_COLORS.danger : EXPORT_TOTAL_COLORS.success; }
+    return EXPORT_TOTAL_COLORS[mode] || EXPORT_TOTAL_COLORS.neutral;
+  }
+
+  // opts: { title, subtitle, rows: [{data, descricao, valor, tipo}], totals: [{label, value, colorMode}] }
+  // Draws synchronously onto #export-image-canvas and returns it (no async work, so callers can
+  // follow up with a synchronous navigator.clipboard.write() call and stay inside the user gesture).
+  function renderTransactionImage(opts) {
     var canvas    = document.getElementById('export-image-canvas');
     var ctx       = canvas.getContext('2d');
     var scale     = 2;
     var width     = 640;
     var padding   = 24;
     var rowHeight = 34;
-    var headerHeight = 96;
-    var footerHeight = 90;
-    var rowsCount = data.length || 1;
+    var headerHeight    = 96;
+    var totalLineHeight = 30;
+    var footerHeight    = 30 + opts.totals.length * totalLineHeight + 40;
+    var rowsCount = opts.rows.length || 1;
     var height    = headerHeight + rowsCount * rowHeight + footerHeight;
 
     canvas.width  = width * scale;
@@ -914,16 +930,13 @@ document.addEventListener('DOMContentLoaded', function () {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
 
-    var monthLabelEl = document.getElementById('current-month-label');
-    var monthLabel   = monthLabelEl ? monthLabelEl.textContent.trim().replace(/\s+/g, ' ') : '';
-
     ctx.fillStyle = '#212529';
     ctx.font      = 'bold 20px Arial, sans-serif';
-    ctx.fillText('Lançamentos' + (monthLabel ? ' — ' + monthLabel : ''), padding, 34);
+    ctx.fillText(opts.title, padding, 34);
 
     ctx.fillStyle = '#6c757d';
     ctx.font      = '13px Arial, sans-serif';
-    ctx.fillText(data.length + ' lançamento(s)', padding, 54);
+    ctx.fillText(opts.subtitle, padding, 54);
 
     ctx.strokeStyle = '#dee2e6';
     ctx.lineWidth   = 1;
@@ -941,18 +954,16 @@ document.addEventListener('DOMContentLoaded', function () {
       return t + '…';
     }
 
-    var y     = headerHeight - rowHeight + 24;
-    var total = 0;
+    var y = headerHeight - rowHeight + 24;
 
-    if (data.length === 0) {
+    if (opts.rows.length === 0) {
       ctx.fillStyle = '#6c757d';
       ctx.font      = '14px Arial, sans-serif';
       ctx.fillText('Nenhum lançamento encontrado.', padding, y);
       y += rowHeight;
     } else {
-      data.forEach(function (row, idx) {
+      opts.rows.forEach(function (row, idx) {
         var val = parseFloat(row.valor) || 0;
-        total += val;
 
         if (idx % 2 === 1) {
           ctx.fillStyle = '#f8f9fa';
@@ -994,16 +1005,18 @@ document.addEventListener('DOMContentLoaded', function () {
     ctx.lineTo(width - padding, y);
     ctx.stroke();
 
-    y += 26;
-    ctx.fillStyle = '#212529';
-    ctx.font      = 'bold 16px Arial, sans-serif';
-    ctx.fillText('Total', padding, y);
+    opts.totals.forEach(function (t) {
+      y += totalLineHeight;
+      ctx.fillStyle = '#212529';
+      ctx.font      = 'bold 16px Arial, sans-serif';
+      ctx.fillText(t.label, padding, y);
 
-    ctx.font      = 'bold 16px Arial, sans-serif';
-    ctx.fillStyle = total < 0 ? '#dc3545' : '#28a745';
-    ctx.textAlign = 'right';
-    ctx.fillText(formatMoneyBRL(total), width - padding, y);
-    ctx.textAlign = 'left';
+      ctx.font      = 'bold 16px Arial, sans-serif';
+      ctx.fillStyle = resolveTotalColor(t.colorMode, t.value);
+      ctx.textAlign = 'right';
+      ctx.fillText(formatMoneyBRL(t.value), width - padding, y);
+      ctx.textAlign = 'left';
+    });
 
     y += 24;
     ctx.fillStyle = '#adb5bd';
@@ -1015,8 +1028,95 @@ document.addEventListener('DOMContentLoaded', function () {
       y
     );
 
-    canvas.toBlob(function (blob) { callback(blob); }, 'image/png');
+    return canvas;
   }
+
+  function buildExportImageCanvas() {
+    var data         = getTransactionData();
+    var monthLabelEl = document.getElementById('current-month-label');
+    var monthLabel   = monthLabelEl ? monthLabelEl.textContent.trim().replace(/\s+/g, ' ') : '';
+    var total = data.reduce(function (sum, row) { return sum + (parseFloat(row.valor) || 0); }, 0);
+
+    return renderTransactionImage({
+      title:    'Lançamentos' + (monthLabel ? ' — ' + monthLabel : ''),
+      subtitle: data.length + ' lançamento(s)',
+      rows:     data,
+      totals:   [{ label: 'Total', value: total, colorMode: 'auto' }],
+    });
+  }
+
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a   = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Must be invoked synchronously from within the user-gesture handler (no `await`/callback before
+  // this call) — passing a pending Blob promise to ClipboardItem keeps the write inside the gesture,
+  // whereas resolving the blob first and calling clipboard.write() afterwards gets silently rejected
+  // by Safari/Firefox (and can be flaky in Chrome) because activation has already expired by then.
+  function clipboardWriteCanvasPNG(canvas, onSuccess, onFallback) {
+    if (navigator.clipboard && window.ClipboardItem) {
+      var blobPromise = new Promise(function (resolve) { canvas.toBlob(resolve, 'image/png'); });
+      navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blobPromise })])
+        .then(onSuccess)
+        .catch(function () { blobPromise.then(onFallback); });
+    } else {
+      canvas.toBlob(onFallback, 'image/png');
+    }
+  }
+
+  function slugify(text) {
+    var normalized = String(text || '').normalize('NFD');
+    var stripped = '';
+    for (var i = 0; i < normalized.length; i++) {
+      var code = normalized.charCodeAt(i);
+      if (code >= 0x0300 && code <= 0x036f) { continue; } // skip combining diacritical marks
+      stripped += normalized[i];
+    }
+    return stripped.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'pessoa';
+  }
+
+  function flashButtonIcon(btn, iconClass) {
+    var icon = btn.querySelector('i');
+    if (!icon) { return; }
+    var originalClass = icon.className;
+    icon.className = iconClass;
+    setTimeout(function () { icon.className = originalClass; }, 1500);
+  }
+
+  document.querySelectorAll('.btn-export-person').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var d = btn.dataset;
+      var rows;
+      try { rows = JSON.parse(d.rows || '[]'); } catch (e) { rows = []; }
+
+      var canvas = renderTransactionImage({
+        title:    'Empréstimos — ' + (d.pessoa || ''),
+        subtitle: rows.length + ' lançamento(s)',
+        rows:     rows,
+        totals: [
+          { label: 'Total',    value: parseFloat(d.total)    || 0, colorMode: 'neutral' },
+          { label: 'Recebido', value: parseFloat(d.recebido) || 0, colorMode: 'success' },
+          { label: 'Pendente', value: parseFloat(d.pendente) || 0, colorMode: (parseFloat(d.pendente) || 0) > 0 ? 'warning' : 'muted' },
+        ],
+      });
+
+      clipboardWriteCanvasPNG(
+        canvas,
+        function () { flashButtonIcon(btn, 'fa fa-check fa-xs'); },
+        function (blob) {
+          downloadBlob(blob, 'emprestimo-' + slugify(d.pessoa) + '.png');
+          flashButtonIcon(btn, 'fa fa-download fa-xs');
+        }
+      );
+    });
+  });
 
   function fallbackCopy(text, feedback) {
     var ta = document.createElement('textarea');
@@ -1040,17 +1140,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.getElementById('export-do-download').addEventListener('click', function () {
     if (exportFmt === 'image') {
-      buildExportImageBlob(function (blob) {
-        var url = URL.createObjectURL(blob);
-        var a   = document.createElement('a');
-        a.href     = url;
-        a.download = 'lancamentos.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      var canvas = buildExportImageCanvas();
+      canvas.toBlob(function (blob) {
+        downloadBlob(blob, 'lancamentos.png');
         $('#modal-export').modal('hide');
-      });
+      }, 'image/png');
       return;
     }
     var result = buildExportContent(exportFmt);
@@ -1062,31 +1156,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var feedback = document.getElementById('export-copy-feedback');
 
     if (exportFmt === 'image') {
-      buildExportImageBlob(function (blob) {
-        if (navigator.clipboard && window.ClipboardItem) {
-          navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })])
-            .then(function () { showCopyFeedback(feedback); })
-            .catch(function () {
-              var url = URL.createObjectURL(blob);
-              var a   = document.createElement('a');
-              a.href     = url;
-              a.download = 'lancamentos.png';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            });
-        } else {
-          var url = URL.createObjectURL(blob);
-          var a   = document.createElement('a');
-          a.href     = url;
-          a.download = 'lancamentos.png';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }
-      });
+      var canvas = buildExportImageCanvas();
+      clipboardWriteCanvasPNG(
+        canvas,
+        function () { showCopyFeedback(feedback); },
+        function (blob) { downloadBlob(blob, 'lancamentos.png'); }
+      );
       return;
     }
 
