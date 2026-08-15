@@ -122,10 +122,14 @@
 
                     <input type="checkbox" class="t-row-cb cb" id="cb-0" name="transacoes[{{ $loop->index }}][importar]" value="1" {{ $transaction['is_duplicada'] || $transaction['is_duplicada_por_valor'] ? '' : 'checked' }}>
                     <span class="t-row-desc ">
-                      <input type="text" 
-                      class="form-control form-control-sm" 
-                      name="transacoes[{{ $loop->index }}][descricao]" 
-                      value="{{ $transaction['descricao_banco'] }}">
+                      <input type="text"
+                      class="form-control form-control-sm"
+                      name="transacoes[{{ $loop->index }}][descricao]"
+                      value="{{ $transaction['descricao_sugerida'] ?? $transaction['descricao_banco'] }}">
+                      @if (!empty($transaction['descricao_sugerida']))
+                        <span class="badge badge-info" style="font-size:9px;vertical-align:middle;">De/Para</span>
+                        <div style="font-size:11px;color:#888;">Banco: {{ $transaction['descricao_banco'] }}</div>
+                      @endif
 
                       @if($transaction['is_duplicada'])
                         <div class="t-expand-alert" style="background:#FEF2F2;border-color:#FCA5A5;color:#7F1D1D;">

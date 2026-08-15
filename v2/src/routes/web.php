@@ -6,6 +6,7 @@ use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\WalletsController;
 use App\Http\Controllers\CreditCardsController;
 use App\Http\Controllers\TransactionsController;
+use App\Http\Controllers\TransactionMappingsController;
 use App\Http\Controllers\DashboardController;
 
 use App\Http\Controllers\WorkspaceController;
@@ -42,6 +43,13 @@ Route::middleware(['auth:sanctum', 'verified', 'two_factor.enabled', 'workspace'
   Route::get('/categories/edit/{id}',[CategoriesController::class, 'edit']);
   Route::post('/categories/store',[CategoriesController::class, 'store']);
   Route::get('/categories/remove/{id}',[CategoriesController::class, 'remove']);
+
+  Route::get('/transaction-mappings',[TransactionMappingsController::class, 'index']);
+  Route::get('/transaction-mappings/new',[TransactionMappingsController::class, 'new']);
+  Route::get('/transaction-mappings/edit/{id}',[TransactionMappingsController::class, 'edit']);
+  Route::post('/transaction-mappings/store',[TransactionMappingsController::class, 'store']);
+  Route::get('/transaction-mappings/remove/{id}',[TransactionMappingsController::class, 'remove']);
+  Route::post('/transaction-mappings/quick-toggle/{id}',[TransactionMappingsController::class, 'quickToggle']);
 
   Route::get('/wallets',[WalletsController::class, 'index']);
   Route::get('/wallets/new',[WalletsController::class, 'new']);

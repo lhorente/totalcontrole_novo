@@ -9,6 +9,7 @@ use App\Models\Contact;
 use App\Models\CreditCard;
 use App\Models\Wallet;
 use App\Models\Workspace;
+use App\Models\TransactionMapping;
 use App\Http\Requests\StoreContact;
 use App\Http\Requests\ImportCsvRequest;
 use App\Services\CsvParserService;
@@ -851,7 +852,19 @@ class TransactionsController extends Controller
       $transaction['chave_banco'] = $chaveBanco;
       $transaction['data_banco'] = $dataBanco;
       $transaction['_key'] = $idx;
-      
+
+      // Sugestão de local/categoria a partir do De <> Para cadastrado.
+      // O mapeamento tem prioridade sobre a categoria vinda do CSV: é uma
+      // regra específica e deliberada, enquanto a coluna do CSV costuma
+      // trazer só uma categoria padrão/genérica.
+      $mapeamento = TransactionMapping::matchFor($descricao);
+      if ($mapeamento) {
+        $transaction['descricao_sugerida'] = $mapeamento->descricao_local;
+        if ($mapeamento->id_categoria) {
+          $transaction['id_categoria'] = $mapeamento->id_categoria;
+        }
+      }
+
       return $transaction;
     });
 
@@ -923,12 +936,14 @@ class TransactionsController extends Controller
           ];
         }
 
+        $futureMapeamento = TransactionMapping::matchFor($futureDesc);
+
         $installmentGroups[$mesAno]['installments'][] = [
           'source_index'    => $index,
           'parcel'          => $futureParcel,
           'total'           => $inst['total'],
           'descricao_banco' => $futureDesc,
-          'descricao'       => $futureDesc,
+          'descricao'       => $futureMapeamento->descricao_local ?? $futureDesc,
           'valor'           => $futureVal,
           'data'            => $futureDate->format('Y-m-d'),
           'id_cartao'       => $idCartao,
@@ -1005,6 +1020,19 @@ class TransactionsController extends Controller
     foreach ($data['transacoes'] as $t) {
       $t['id_categoria'] = $catMap->get(mb_strtolower(trim($t['categoria'] ?? '')))?->id ?? null;
       $t['id_cliente']   = $contatoMap->get(mb_strtolower(trim($t['pessoa'] ?? '')))?->id ?? null;
+
+      // Sugestão de local/categoria a partir do De <> Para cadastrado.
+      // A categoria do mapeamento tem prioridade sobre a do JSON: é uma
+      // regra específica e deliberada. Já a descrição só é usada quando o
+      // JSON não trouxer nenhuma (o classificador externo tende a ser mais rico).
+      $mapeamento = TransactionMapping::matchFor($t['descricao_banco'] ?? '');
+      if ($mapeamento) {
+        $t['descricao'] = $t['descricao'] ?: $mapeamento->descricao_local;
+        if ($mapeamento->id_categoria) {
+          $t['id_categoria'] = $mapeamento->id_categoria;
+        }
+      }
+      $t['descricao'] = $t['descricao'] ?: ($t['descricao_banco'] ?? '');
 
       $dataBanco  = $t['data_banco'] ?? '';
       $descricao  = $t['descricao_banco'] ?? '';

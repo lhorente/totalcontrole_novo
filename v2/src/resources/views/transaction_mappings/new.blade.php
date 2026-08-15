@@ -1,0 +1,105 @@
+@extends('layouts.dashboard')
+
+@section('content')
+<div class="content-header">
+  <div class="container">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0 text-dark"> Adicionar mapeamento</h1>
+      </div><!-- /.col -->
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="{{ url('/') }}">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="{{ url('transaction-mappings/') }}">De &lt;&gt; Para de descrições</a></li>
+          <li class="breadcrumb-item active">Adicionar mapeamento</li>
+        </ol>
+      </div><!-- /.col -->
+    </div><!-- /.row -->
+  </div><!-- /.container-fluid -->
+</div>
+<div class="content">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-12">
+
+        <div class="card">
+          <!-- /.card-header -->
+          <div class="card-body">
+            <form role="form" method="post" action="{{ url('transaction-mappings/store') }}">
+              @csrf
+              @method('POST')
+
+              <div class="row">
+                <div class="col-sm-6">
+                  <div class="form-group">
+                    <label for="padrao">Padrão da fatura</label>
+                    <input type="text" id="padrao" name="padrao" class="form-control @error('padrao') is-invalid @enderror"
+                           placeholder="ex: CBQ*CZTO COMERCIO DE" value="{{ old('padrao') }}">
+                    <small class="text-muted">Trecho da descrição do banco. Qualquer fatura que contenha esse trecho será reconhecida.</small>
+                    @error('padrao')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="form-group">
+                    <label for="descricao_local">Vira (local / apelido)</label>
+                    <input type="text" id="descricao_local" name="descricao_local" class="form-control @error('descricao_local') is-invalid @enderror"
+                           placeholder="ex: McDonald's" value="{{ old('descricao_local') }}">
+                    @error('descricao_local')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-sm-6">
+                  <div class="form-group">
+                    <label for="id_categoria">Categoria</label>
+                    <select id="id_categoria" name="id_categoria" class="form-control @error('id_categoria') is-invalid @enderror">
+                      <option value="">Sem categoria</option>
+                      @foreach ($categories as $cat)
+                        <option value="{{ $cat->id }}" {{ old('id_categoria') == $cat->id ? 'selected' : '' }}>
+                          {{ $cat->nome }}
+                        </option>
+                      @endforeach
+                    </select>
+                    @error('id_categoria')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="form-group">
+                    <label for="id_cliente">Pessoa <small class="text-muted">(opcional)</small></label>
+                    <select id="id_cliente" name="id_cliente" class="form-control @error('id_cliente') is-invalid @enderror">
+                      <option value="">Nenhuma</option>
+                      @foreach ($contacts as $contact)
+                        <option value="{{ $contact->id }}" {{ old('id_cliente') == $contact->id ? 'selected' : '' }}>
+                          {{ $contact->nome }}
+                        </option>
+                      @endforeach
+                    </select>
+                    @error('id_cliente')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input" id="ativo" name="ativo" value="1" checked>
+                  <label class="custom-control-label" for="ativo">Mapeamento ativo</label>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-sm-12">
+                  <button type="submit" class="btn btn-primary">Salvar</button>
+                  <a href="{{ url('transaction-mappings') }}" class="btn btn-default">Cancelar</a>
+                </div>
+              </div>
+            </form>
+          </div>
+          <!-- /.card-body -->
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+@endsection
