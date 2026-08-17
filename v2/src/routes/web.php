@@ -33,11 +33,14 @@ Route::get('/', function () {
 Route::middleware(['auth:sanctum', 'verified', 'two_factor.enabled', 'workspace'])->group(function () {
   Route::get('/',[DashboardController::class, 'index'])->name('dashboard');
 
-  Route::get('/contacts',[ContactsController::class, 'index']);
-  Route::get('/contacts/new',[ContactsController::class, 'new']);
-  Route::get('/contacts/edit/{id}',[ContactsController::class, 'edit']);
-  Route::post('/contacts/store',[ContactsController::class, 'store']);
-  Route::get('/contacts/remove/{id}',[ContactsController::class, 'remove']);
+  Route::prefix('contacts')->name('contacts.')->group(function () {
+    Route::get('/', [ContactsController::class, 'index'])->name('index');
+    Route::get('/new', [ContactsController::class, 'create'])->name('create');
+    Route::post('/', [ContactsController::class, 'store'])->name('store');
+    Route::get('/edit/{id}', [ContactsController::class, 'edit'])->name('edit');
+    Route::post('/edit/{id}', [ContactsController::class, 'update'])->name('update');
+    Route::delete('/{id}', [ContactsController::class, 'destroy'])->name('destroy');
+  });
 
   Route::get('/categories',[CategoriesController::class, 'index']);
   Route::get('/categories/new',[CategoriesController::class, 'new']);

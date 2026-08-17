@@ -30,6 +30,8 @@ App::uses('Model', 'Model','AuthComponent', 'Controller/Component');
  * @package       app.Model
  */
 class Cliente extends AppModel {
+    public $useTable = 'contatos';
+
     public $validate = array(
         'nome' => array(
             'minLength' => array(

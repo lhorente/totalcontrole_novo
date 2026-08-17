@@ -152,7 +152,7 @@ class TransactionsController extends Controller
                           ->orderBy('descricao')
                           ->get();
 
-    $pessoas = Contact::where('id_usuario', Auth::id())
+    $pessoas = Contact::query()
                        ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
@@ -273,7 +273,7 @@ class TransactionsController extends Controller
                           ->orderBy('descricao')
                           ->get();
 
-    $pessoas = Contact::where('id_usuario', Auth::id())
+    $pessoas = Contact::query()
                        ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
@@ -383,7 +383,7 @@ class TransactionsController extends Controller
                           ->orderBy('descricao')
                           ->get();
 
-    $pessoas = Contact::where('id_usuario', Auth::id())
+    $pessoas = Contact::query()
                        ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
@@ -481,7 +481,7 @@ class TransactionsController extends Controller
                           ->orderBy('descricao')
                           ->get();
 
-    $pessoas = Contact::where('id_usuario', Auth::id())
+    $pessoas = Contact::query()
                        ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
@@ -556,7 +556,7 @@ class TransactionsController extends Controller
                           ->orderBy('descricao')
                           ->get();
 
-    $pessoas = Contact::where('id_usuario', Auth::id())
+    $pessoas = Contact::query()
                        ->where('status', 'ativo')
                        ->orderBy('nome')
                        ->get();
@@ -873,7 +873,7 @@ class TransactionsController extends Controller
                           ->where('status', 'a')
                           ->orderBy('nome')
                           ->get();
-    $pessoas = Contact::where('id_usuario', Auth::id())->where('status', 'ativo')->get();
+    $pessoas = Contact::query()->where('status', 'ativo')->get();
 
     // --- Installment suggestions ---
     // Group future installments by future billing month.

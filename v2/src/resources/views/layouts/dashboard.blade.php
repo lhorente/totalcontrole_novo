@@ -62,7 +62,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
               <li><a href="{{ url('/transaction-mappings') }}" class="dropdown-item">De &lt;&gt; Para de descrições</a></li>
               <li><a href="{{ url('/wallets') }}" class="dropdown-item">Carteiras</a></li>
               <li><a href="{{ url('/credit_cards') }}" class="dropdown-item">Cartões de crédito</a></li>
-              <li><a href="{{ url('/contacts') }}" class="dropdown-item">Contatos</a></li>
+              <li><a href="{{ route('contacts.index') }}" class="dropdown-item">Contatos</a></li>
               <li><a href="{{ url('/products') }}" class="dropdown-item">Produtos</a></li>
             </ul>
           </li>
