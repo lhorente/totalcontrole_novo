@@ -8,6 +8,7 @@ use App\Http\Controllers\CreditCardsController;
 use App\Http\Controllers\TransactionsController;
 use App\Http\Controllers\TransactionMappingsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentoController;
 
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\SmartposImportController;
@@ -86,6 +87,16 @@ Route::middleware(['auth:sanctum', 'verified', 'two_factor.enabled', 'workspace'
   Route::post('/transactions/import-preview',[TransactionsController::class, 'importPreview'])->name('transactions.importPreview');
   Route::post('/transactions/import-preview-json',[TransactionsController::class, 'importPreviewJson'])->name('transactions.importPreviewJson');
   Route::post('/transactions/import-store',[TransactionsController::class, 'importStore'])->name('transactions.importStore');
+
+  // Módulo Documentos e Prazos
+  Route::prefix('documentos')->name('documentos.')->group(function () {
+    Route::get('/', [DocumentoController::class, 'index'])->name('index');
+    Route::get('/new', [DocumentoController::class, 'create'])->name('create');
+    Route::post('/', [DocumentoController::class, 'store'])->name('store');
+    Route::get('/edit/{id}', [DocumentoController::class, 'edit'])->name('edit');
+    Route::post('/edit/{id}', [DocumentoController::class, 'update'])->name('update');
+    Route::delete('/{id}', [DocumentoController::class, 'destroy'])->name('destroy');
+  });
 
   Route::post('/workspace/switch/{id}', [WorkspaceController::class, 'switch'])->name('workspace.switch');
 

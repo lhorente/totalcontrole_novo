@@ -57,6 +57,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
           <li class="nav-item dropdown">
             <a id="dropdownSubMenu1" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="nav-link dropdown-toggle">Cadastros</a>
             <ul aria-labelledby="dropdownSubMenu1" class="dropdown-menu border-0 shadow">
+              <li><a href="{{ route('documentos.index') }}" class="dropdown-item">Documentos e Prazos</a></li>
               <li><a href="{{ url('/categories') }}" class="dropdown-item">Categorias</a></li>
               <li><a href="{{ url('/transaction-mappings') }}" class="dropdown-item">De &lt;&gt; Para de descrições</a></li>
               <li><a href="{{ url('/wallets') }}" class="dropdown-item">Carteiras</a></li>
