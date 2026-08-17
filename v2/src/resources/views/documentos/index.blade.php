@@ -77,6 +77,11 @@
                     <td>{{ $documento->id }}.</td>
                     <td>
                       <a href="{{ route('documentos.edit', $documento->id) }}">{{ $documento->titulo }}</a>
+                      @if ($documento->documento && $documento->documento->arquivo_url)
+                        <a href="{{ $documento->documento->arquivo_url }}" target="_blank" rel="noopener" title="Abrir documento">
+                          <i class="fas fa-external-link-alt fa-xs"></i>
+                        </a>
+                      @endif
                       @if ($documento->documento && $documento->documento->numero_documento)
                         <small class="text-muted d-block">{{ $documento->documento->numero_documento }}</small>
                       @endif

@@ -105,6 +105,14 @@
 </div>
 
 <div class="form-group">
+  <label for="arquivo_url">Link do documento <small class="text-muted">(opcional)</small></label>
+  <input type="url" id="arquivo_url" name="arquivo_url" class="form-control @error('arquivo_url') is-invalid @enderror"
+         placeholder="ex: link do Google Drive" value="{{ old('arquivo_url', $doc->arquivo_url ?? '') }}">
+  <small class="text-muted">Cole aqui o link do documento salvo no Google Drive (ou outro serviço). Upload direto ainda não é suportado.</small>
+  @error('arquivo_url')<div class="invalid-feedback">{{ $message }}</div>@enderror
+</div>
+
+<div class="form-group">
   <label for="observacoes">Observações <small class="text-muted">(opcional)</small></label>
   <textarea id="observacoes" name="observacoes" rows="3" class="form-control @error('observacoes') is-invalid @enderror">{{ old('observacoes', $doc->observacoes ?? '') }}</textarea>
   @error('observacoes')<div class="invalid-feedback">{{ $message }}</div>@enderror

@@ -38,6 +38,7 @@ class DocumentoController extends Controller
     $evento->documento()->updateOrCreate([], [
       'numero_documento' => $request->input('numero_documento'),
       'emissor'          => $request->input('emissor'),
+      'arquivo_url'      => $request->input('arquivo_url'),
       'observacoes'      => $request->input('observacoes'),
     ]);
 
@@ -60,6 +61,7 @@ class DocumentoController extends Controller
     $evento->documento()->updateOrCreate([], [
       'numero_documento' => $request->input('numero_documento'),
       'emissor'          => $request->input('emissor'),
+      'arquivo_url'      => $request->input('arquivo_url'),
       'observacoes'      => $request->input('observacoes'),
     ]);
 

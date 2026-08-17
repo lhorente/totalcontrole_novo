@@ -33,6 +33,7 @@ class StoreDocumento extends FormRequest
         'status'            => 'required|in:ativo,concluido,cancelado,vencido',
         'numero_documento'  => 'nullable|max:255',
         'emissor'           => 'nullable|max:255',
+        'arquivo_url'       => 'nullable|url|max:255',
         'observacoes'       => 'nullable|string',
       ];
     }
@@ -56,6 +57,8 @@ class StoreDocumento extends FormRequest
             'valor.min'                => 'O campo valor não pode ser negativo',
             'status.required'          => 'O campo status é obrigatório',
             'status.in'                => 'O campo status é inválido',
+            'arquivo_url.url'          => 'O link do documento precisa ser uma URL válida (ex: https://drive.google.com/...)',
+            'arquivo_url.max'          => 'O link do documento precisa ter no máximo 255 caracteres',
         ];
     }
 }
