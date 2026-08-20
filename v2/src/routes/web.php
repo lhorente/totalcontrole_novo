@@ -9,6 +9,8 @@ use App\Http\Controllers\TransactionsController;
 use App\Http\Controllers\TransactionMappingsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentoController;
+use App\Http\Controllers\BemController;
+use App\Http\Controllers\PlanejamentoController;
 
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\SmartposImportController;
@@ -99,6 +101,25 @@ Route::middleware(['auth:sanctum', 'verified', 'two_factor.enabled', 'workspace'
     Route::get('/edit/{id}', [DocumentoController::class, 'edit'])->name('edit');
     Route::post('/edit/{id}', [DocumentoController::class, 'update'])->name('update');
     Route::delete('/{id}', [DocumentoController::class, 'destroy'])->name('destroy');
+  });
+
+  // Módulo Manutenções & Planejamento
+  Route::prefix('bens')->name('bens.')->group(function () {
+    Route::get('/', [BemController::class, 'index'])->name('index');
+    Route::get('/new', [BemController::class, 'create'])->name('create');
+    Route::post('/', [BemController::class, 'store'])->name('store');
+    Route::get('/edit/{id}', [BemController::class, 'edit'])->name('edit');
+    Route::post('/edit/{id}', [BemController::class, 'update'])->name('update');
+    Route::delete('/{id}', [BemController::class, 'destroy'])->name('destroy');
+  });
+
+  Route::prefix('planejamento')->name('planejamento.')->group(function () {
+    Route::get('/', [PlanejamentoController::class, 'index'])->name('index');
+    Route::get('/new', [PlanejamentoController::class, 'create'])->name('create');
+    Route::post('/', [PlanejamentoController::class, 'store'])->name('store');
+    Route::get('/edit/{id}', [PlanejamentoController::class, 'edit'])->name('edit');
+    Route::post('/edit/{id}', [PlanejamentoController::class, 'update'])->name('update');
+    Route::delete('/{id}', [PlanejamentoController::class, 'destroy'])->name('destroy');
   });
 
   Route::post('/workspace/switch/{id}', [WorkspaceController::class, 'switch'])->name('workspace.switch');

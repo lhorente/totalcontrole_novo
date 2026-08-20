@@ -56,6 +56,11 @@ class Evento extends Model
       return $this->hasOne(EventoDocumento::class, 'id_evento');
   }
 
+  public function planejamento()
+  {
+      return $this->hasOne(EventoPlanejamento::class, 'id_evento');
+  }
+
   public function contact()
   {
       return $this->belongsTo(Contact::class, 'id_cliente');
