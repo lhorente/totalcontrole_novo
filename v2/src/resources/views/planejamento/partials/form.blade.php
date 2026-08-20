@@ -107,6 +107,37 @@
   </div>
 </div>
 
+<div id="bloco-conclusao" class="form-group border rounded p-3 bg-light">
+  <label class="mb-2">Conclusão</label>
+  <div class="row">
+    <div class="col-sm-4">
+      <label for="data_conclusao">Data de conclusão</label>
+      <input type="date" id="data_conclusao" name="data_conclusao" class="form-control @error('data_conclusao') is-invalid @enderror"
+             value="{{ old('data_conclusao', optional($plan->data_conclusao ?? null)->format('Y-m-d') ?? now()->format('Y-m-d')) }}">
+      @error('data_conclusao')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+    <div class="col-sm-4">
+      <label for="valor_pago">Valor pago <small class="text-muted">(opcional)</small></label>
+      <input type="number" step="0.01" min="0" id="valor_pago" name="valor_pago" class="form-control @error('valor_pago') is-invalid @enderror"
+             placeholder="0,00" value="{{ old('valor_pago', $plan->valor_pago ?? '') }}">
+      @error('valor_pago')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+    <div class="col-sm-4">
+      <label for="id_transacao">Vincular a uma transação <small class="text-muted">(opcional)</small></label>
+      <select id="id_transacao" name="id_transacao" class="form-control @error('id_transacao') is-invalid @enderror">
+        <option value="">Nenhuma — não vincular</option>
+        @foreach ($transacoes as $transacao)
+          <option value="{{ $transacao->id }}" {{ old('id_transacao', $plan->id_transacao ?? '') == $transacao->id ? 'selected' : '' }}>
+            {{ $transacao->data->format('d/m/Y') }} · {{ $transacao->descricao }} · R$ {{ number_format($transacao->valor, 2, ',', '.') }}
+          </option>
+        @endforeach
+      </select>
+      <small class="text-muted">Compara o valor estimado com o que foi realmente pago no seu orçamento.</small>
+      @error('id_transacao')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+  </div>
+</div>
+
 <div id="bloco-recorrencia" class="form-group border rounded p-3 bg-light">
   <div class="custom-control custom-checkbox">
     <input type="hidden" name="recorrente" value="0">
@@ -144,7 +175,9 @@
 <script>
 (function(){
   var tipoSelect = document.getElementById('tipo');
+  var statusSelect = document.getElementById('status');
   var blocoRecorrencia = document.getElementById('bloco-recorrencia');
+  var blocoConclusao = document.getElementById('bloco-conclusao');
   var recorrenteCheckbox = document.getElementById('recorrente');
   var camposRecorrencia = document.getElementById('campos-recorrencia');
 
@@ -154,11 +187,16 @@
   function syncRecorrencia(){
     camposRecorrencia.style.display = recorrenteCheckbox.checked ? '' : 'none';
   }
+  function syncStatus(){
+    blocoConclusao.style.display = statusSelect.value === 'concluido' ? '' : 'none';
+  }
 
   tipoSelect.addEventListener('change', syncTipo);
   recorrenteCheckbox.addEventListener('change', syncRecorrencia);
+  statusSelect.addEventListener('change', syncStatus);
 
   syncTipo();
   syncRecorrencia();
+  syncStatus();
 })();
 </script>

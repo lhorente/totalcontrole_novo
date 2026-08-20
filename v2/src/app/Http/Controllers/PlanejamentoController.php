@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Evento;
 use App\Models\Bem;
+use App\Models\Transaction;
 use App\Http\Requests\StorePlanejamento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class PlanejamentoController extends Controller
 {
@@ -41,14 +43,37 @@ class PlanejamentoController extends Controller
 
     $itens = $query->orderByRaw('data_vencimento IS NULL, data_vencimento')->get();
     $bens  = Bem::orderBy('nome')->get();
+    $resumo = $this->resumo();
 
-    return view('planejamento/index', compact('itens', 'bens', 'tipo', 'idBem', 'prioridade', 'status'));
+    return view('planejamento/index', compact('itens', 'bens', 'tipo', 'idBem', 'prioridade', 'status', 'resumo'));
+  }
+
+  /**
+   * Números do painel de resumo, sempre sobre a base completa (não respeita
+   * os filtros da listagem) para servir como um retrato geral do módulo.
+   */
+  private function resumo(){
+    $pendentes = Evento::modulo(self::MODULO)->whereNotIn('status', ['concluido', 'cancelado']);
+
+    return [
+      'valor_pendente' => (clone $pendentes)->sum('valor'),
+      'atrasados'       => (clone $pendentes)
+        ->whereNotNull('data_vencimento')
+        ->where('data_vencimento', '<', now()->startOfDay())
+        ->count(),
+      'proximos_30'     => (clone $pendentes)
+        ->whereNotNull('data_vencimento')
+        ->whereBetween('data_vencimento', [now()->startOfDay(), now()->addDays(30)->endOfDay()])
+        ->count(),
+      'bens_cadastrados' => Bem::count(),
+    ];
   }
 
   public function create(){
     $bens = Bem::where('ativo', true)->orderBy('nome')->get();
+    $transacoes = $this->transacoesRecentes();
 
-    return view('planejamento/create', compact('bens'));
+    return view('planejamento/create', compact('bens', 'transacoes'));
   }
 
   public function store(StorePlanejamento $request){
@@ -61,7 +86,12 @@ class PlanejamentoController extends Controller
     $this->fillEvento($evento, $request);
     $evento->save();
 
-    $evento->planejamento()->updateOrCreate([], $this->planejamentoData($request));
+    $planData = $this->planejamentoData($request);
+    $evento->planejamento()->updateOrCreate([], $planData);
+
+    if ($evento->status === 'concluido' && $planData['recorrente']){
+      $this->gerarProximaOcorrencia($evento, $planData);
+    }
 
     return redirect('/planejamento')->with('success', 'Item salvo com sucesso');
   }
@@ -69,17 +99,25 @@ class PlanejamentoController extends Controller
   public function edit($id){
     $item = Evento::modulo(self::MODULO)->with('planejamento')->findOrFail($id);
     $bens = Bem::where('ativo', true)->orderBy('nome')->get();
+    $transacoes = $this->transacoesRecentes();
 
-    return view('planejamento/edit', compact('item', 'bens'));
+    return view('planejamento/edit', compact('item', 'bens', 'transacoes'));
   }
 
   public function update(StorePlanejamento $request, $id){
     $evento = Evento::modulo(self::MODULO)->findOrFail($id);
+    $statusAnterior = $evento->status;
 
     $this->fillEvento($evento, $request);
     $evento->save();
 
-    $evento->planejamento()->updateOrCreate([], $this->planejamentoData($request));
+    $planData = $this->planejamentoData($request);
+    $evento->planejamento()->updateOrCreate([], $planData);
+
+    $recemConcluido = $statusAnterior !== 'concluido' && $evento->status === 'concluido';
+    if ($recemConcluido && $planData['recorrente']){
+      $this->gerarProximaOcorrencia($evento, $planData);
+    }
 
     return redirect('/planejamento')->with('success', 'Item salvo com sucesso');
   }
@@ -104,6 +142,7 @@ class PlanejamentoController extends Controller
 
   private function planejamentoData(StorePlanejamento $request){
     $recorrente = $request->input('tipo') === 'manutencao' && $request->boolean('recorrente');
+    $concluido  = $request->input('status') === 'concluido';
 
     return [
       'id_bem'                => $request->input('id_bem') ?: null,
@@ -112,7 +151,50 @@ class PlanejamentoController extends Controller
       'recorrente'            => $recorrente,
       'recorrencia_intervalo' => $recorrente ? $request->input('recorrencia_intervalo') : null,
       'recorrencia_unidade'   => $recorrente ? $request->input('recorrencia_unidade') : null,
+      'data_conclusao'        => $concluido ? ($request->input('data_conclusao') ?: null) : null,
+      'valor_pago'            => $concluido ? ($request->input('valor_pago') ?: null) : null,
+      'id_transacao'          => $concluido ? ($request->input('id_transacao') ?: null) : null,
       'observacoes'           => $request->input('observacoes') ?: null,
     ];
+  }
+
+  /**
+   * Ao concluir um item recorrente, cria a próxima ocorrência a partir da
+   * data de conclusão (ou de hoje, se não informada) + o intervalo configurado,
+   * encadeada via id_evento_pai.
+   */
+  private function gerarProximaOcorrencia(Evento $evento, array $planData){
+    $base = $planData['data_conclusao'] ? Carbon::parse($planData['data_conclusao']) : now();
+
+    $proximaData = $planData['recorrencia_unidade'] === 'anos'
+      ? $base->copy()->addYears((int) $planData['recorrencia_intervalo'])
+      : $base->copy()->addMonths((int) $planData['recorrencia_intervalo']);
+
+    $novoEvento = new Evento;
+    $novoEvento->id_workspace    = $evento->id_workspace;
+    $novoEvento->id_usuario      = $evento->id_usuario;
+    $novoEvento->id_evento_pai   = $evento->id;
+    $novoEvento->modulo          = self::MODULO;
+    $novoEvento->tipo            = $evento->tipo;
+    $novoEvento->titulo          = $evento->titulo;
+    $novoEvento->data_evento     = now();
+    $novoEvento->data_vencimento = $proximaData;
+    $novoEvento->valor           = $evento->valor;
+    $novoEvento->status          = 'planejado';
+    $novoEvento->save();
+
+    $novoEvento->planejamento()->create([
+      'id_bem'                => $planData['id_bem'],
+      'categoria'             => $planData['categoria'],
+      'prioridade'            => $planData['prioridade'],
+      'recorrente'            => true,
+      'recorrencia_intervalo' => $planData['recorrencia_intervalo'],
+      'recorrencia_unidade'   => $planData['recorrencia_unidade'],
+      'observacoes'           => $planData['observacoes'],
+    ]);
+  }
+
+  private function transacoesRecentes(){
+    return Transaction::orderByDesc('data')->limit(200)->get();
   }
 }

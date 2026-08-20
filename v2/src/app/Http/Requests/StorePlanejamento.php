@@ -35,6 +35,9 @@ class StorePlanejamento extends FormRequest
         'recorrente'              => 'nullable|boolean',
         'recorrencia_intervalo'   => 'nullable|integer|min:1|required_if:recorrente,1',
         'recorrencia_unidade'     => 'nullable|in:meses,anos|required_if:recorrente,1',
+        'data_conclusao'          => 'nullable|date|required_if:status,concluido',
+        'valor_pago'              => 'nullable|numeric|min:0',
+        'id_transacao'            => 'nullable|integer',
         'observacoes'             => 'nullable|string',
       ];
     }
@@ -60,6 +63,10 @@ class StorePlanejamento extends FormRequest
             'status.in'                      => 'O campo status é inválido',
             'recorrencia_intervalo.required_if' => 'Informe a cada quantos meses/anos o item se repete',
             'recorrencia_unidade.required_if'   => 'Informe se a recorrência é em meses ou anos',
+            'data_conclusao.required_if'        => 'Informe a data em que o item foi concluído',
+            'data_conclusao.date'               => 'O campo data de conclusão é inválido',
+            'valor_pago.numeric'                => 'O campo valor pago é inválido',
+            'valor_pago.min'                    => 'O campo valor pago não pode ser negativo',
         ];
     }
 }

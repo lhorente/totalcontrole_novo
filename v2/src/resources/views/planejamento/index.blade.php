@@ -48,6 +48,46 @@
       </div>
     @endif
 
+    <div class="row mb-3">
+      <div class="col-6 col-md-3">
+        <div class="info-box mb-2">
+          <span class="info-box-icon bg-secondary"><i class="fas fa-hourglass-half"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">Planejado (pendente)</span>
+            <span class="info-box-number" style="font-size:1em">R$ {{ number_format($resumo['valor_pendente'], 2, ',', '.') }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="info-box mb-2">
+          <span class="info-box-icon bg-danger"><i class="fas fa-exclamation-triangle"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">Atrasados</span>
+            <span class="info-box-number" style="font-size:1em">{{ $resumo['atrasados'] }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="info-box mb-2">
+          <span class="info-box-icon bg-warning"><i class="fas fa-calendar-day"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">Próximos 30 dias</span>
+            <span class="info-box-number" style="font-size:1em">{{ $resumo['proximos_30'] }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="info-box mb-2">
+          <span class="info-box-icon bg-info"><i class="fas fa-car"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">Bens cadastrados</span>
+            <span class="info-box-number" style="font-size:1em">{{ $resumo['bens_cadastrados'] }}</span>
+            <a href="{{ route('bens.index') }}" class="d-block small">ver bens →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="row justify-content-center">
       <div class="col-md-12">
 
