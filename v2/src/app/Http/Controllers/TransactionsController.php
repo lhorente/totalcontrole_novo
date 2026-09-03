@@ -356,6 +356,112 @@ class TransactionsController extends Controller
     ));
   }
 
+  public function monthReview($year = null, $month = null){
+    $year  = $year  ?? date('Y');
+    $month = $month ?? date('n');
+
+    $transactions = Transaction::search(['year' => $year, 'month' => $month], ['data' => 'asc']);
+
+    // KPIs
+    $totalEntrou   = $transactions->where('tipo', 'lucro')->sum('valor');
+    $totalPago     = $transactions->where('tipo', 'despesa')->whereNotNull('data_pagamento')->sum('valor');
+    $totalAPagar   = $transactions->where('tipo', 'despesa')->whereNull('data_pagamento')->sum('valor');
+    $sobraPrevista = $totalEntrou - ($totalPago + $totalAPagar);
+
+    $despesas = $transactions->where('tipo', 'despesa');
+
+    // Onde foi o dinheiro (por categoria)
+    $byCategory = $despesas->groupBy('id_categoria')->sortByDesc(fn($g) => $g->sum('valor'));
+    $maxCategoriaValor = $byCategory->isEmpty() ? 0 : $byCategory->max(fn($g) => $g->sum('valor'));
+
+    // Nos cartões
+    $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->where('status', 'ativo')
+                          ->orderBy('descricao')
+                          ->get();
+    $byCard = $despesas->whereNotNull('id_cartao')->groupBy('id_cartao')->sortByDesc(fn($g) => $g->sum('valor'));
+    $maxCardValor = $byCard->isEmpty() ? 0 : $byCard->max(fn($g) => $g->sum('valor'));
+    $totalForaCartao = $despesas->whereNull('id_cartao')->sum('valor');
+
+    // Resumo de Empréstimos
+    $emprestimosTx = $transactions->where('tipo', 'emprestimo');
+    $pagamentosTx  = $transactions->where('tipo', 'pagamento_emprestimo');
+
+    $emprestimosCount = $emprestimosTx->count();
+    $emprestimosTotal = $emprestimosTx->sum('valor');
+    $pagamentosTotal  = $pagamentosTx->sum('valor');
+
+    $pagamentosPorPessoa = $pagamentosTx->groupBy('id_cliente');
+    $emprestimosPorPessoa = $emprestimosTx->groupBy('id_cliente')
+      ->sortByDesc(fn($g) => $g->sum('valor') - ($pagamentosPorPessoa->get($g->first()->id_cliente)?->sum('valor') ?? 0));
+
+    // Os próximos meses
+    $totalDespesaMesAtual = $totalPago + $totalAPagar;
+    $proximosMeses = [];
+    for ($i = 1; $i <= 3; $i++) {
+      $futureDate = Carbon::createFromDate($year, $month, 1)->addMonths($i);
+      $futureTx      = Transaction::search(['year' => $futureDate->year, 'month' => $futureDate->month]);
+      $futureReceita = $futureTx->where('tipo', 'lucro')->sum('valor');
+      $futureTotal   = $futureTx->where('tipo', 'despesa')->sum('valor');
+      $futureSobra   = $futureReceita - $futureTotal;
+
+      if ($futureReceita > 0) {
+        $sobraPct = $futureSobra / $futureReceita;
+        if ($sobraPct > 0.15) {
+          $badge = 'tranquilo';
+        } elseif ($sobraPct >= 0) {
+          $badge = 'atencao';
+        } else {
+          $badge = 'vermelho';
+        }
+      } else {
+        // Sem receita lançada ainda para o mês: não dá pra calcular a sobra com confiança
+        $badge = 'sem_dados';
+      }
+
+      $proximosMeses[] = [
+        'year'  => $futureDate->year,
+        'month' => $futureDate->month,
+        'total' => $futureTotal,
+        'badge' => $badge,
+      ];
+    }
+
+    $currentDateObj = new \DateTime;
+    $currentDateObj->setDate($year, $month ?: date('m'), 1);
+    $currentDateObj->setTime(0, 0);
+
+    $nextMonthObj = clone $currentDateObj;
+    $nextMonthObj->add(new \DateInterval('P1M'));
+
+    $beforeMonthObj = clone $currentDateObj;
+    $beforeMonthObj->sub(new \DateInterval('P1M'));
+
+    return view('transactions/month-review', compact(
+      'year',
+      'month',
+      'nextMonthObj',
+      'beforeMonthObj',
+      'totalEntrou',
+      'totalPago',
+      'totalAPagar',
+      'sobraPrevista',
+      'totalDespesaMesAtual',
+      'byCategory',
+      'maxCategoriaValor',
+      'cartoes',
+      'byCard',
+      'maxCardValor',
+      'totalForaCartao',
+      'proximosMeses',
+      'emprestimosCount',
+      'emprestimosTotal',
+      'pagamentosTotal',
+      'emprestimosPorPessoa',
+      'pagamentosPorPessoa'
+    ));
+  }
+
   public function search(Request $request){
     $month = $request->input('m');
     $year = $request->input('y', date('Y'));

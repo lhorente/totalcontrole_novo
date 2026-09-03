@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum', 'verified', 'two_factor.enabled', 'workspace'
   Route::get('/transactions/card/{cardId}/{year?}/{month?}',[TransactionsController::class, 'cardTransactions'])->name('transactions.cardTransactions');
   Route::get('/transactions',[TransactionsController::class, 'index'])->name('transactions.index');
   Route::get('/transactions/month/{year?}/{month?}',[TransactionsController::class, 'month'])->name('transactions.month');
+  Route::get('/transactions/month-review/{year?}/{month?}',[TransactionsController::class, 'monthReview'])->name('transactions.monthReview');
   Route::get('/transactions/search',[TransactionsController::class, 'search'])->name('transactions.search');
   Route::get('/transactions/view/{id}',[TransactionsController::class, 'view'])->name('transactions.view');
   Route::get('/transactions/new',[TransactionsController::class, 'create'])->name('transactions.create');
