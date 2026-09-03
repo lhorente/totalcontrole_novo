@@ -84,6 +84,18 @@ Prefix any of the above with `docker compose exec total_controle_v2` when runnin
 
 - Generic "document/deadline with event" model: `Evento` + `EventoDocumento` (see migrations `2026_08_15_*`), exposed via `DocumentoController` under the `documentos.*` route group/prefix.
 
+### Manutenções & Planejamento module
+
+- Asset-maintenance/purchase planning: `Bem` (an asset — casa/carro/outro) has many planning items via the same generic `Evento` model (`modulo = 'planejamento'`) + `EventoPlanejamento` (1:1 on `Evento`, holds `prioridade` — `necessidade`/`desejo` —, `recorrente`, `valor_pago`, and an optional `id_transacao` link to the `Transaction` that paid it). Exposed via `PlanejamentoController` under `planejamento.*`, and `BensController` under `bens.*`.
+- "Atrasado" (overdue) isn't a model scope/accessor — it's computed inline (`whereNotNull('data_vencimento')->where('data_vencimento', '<', now()->startOfDay())` on non-concluído/cancelado items) in both `PlanejamentoController::resumo()` and the index Blade. Reuse that inline pattern rather than assuming a helper exists.
+
+### "Nosso Mês" (monthly review screen)
+
+- `GET /transactions/month-review/{year?}/{month?}` (route `transactions.monthReview`) → `TransactionsController::monthReview()` → `resources/views/transactions/month-review.blade.php`. A curated, non-operational overview of the month (KPIs, spend by category/card, loan summary, next-3-months forecast, and a "sonhos e planos" wishlist pulled from Manutenções & Planejamento's `desejo` items) meant to be read together by both spouses, as opposed to the detailed/filterable `transactions.month` ("Resumo Mensal") it links out to via "Ver lançamentos detalhados" and per-row filter buttons.
+- The category/card/loan grouping logic here re-implements the same `groupBy('id_categoria')`/`groupBy('id_cartao')` pattern already duplicated in `DashboardController::index()` and `transactions/partials/summary_pessoal.blade.php` — there's no shared helper, so all three copies need updating if the grouping logic changes. Unlike the dashboard's `by_category`/`by_card` (all transaction types), this screen's "Onde foi o dinheiro"/"Nos cartões" filter to `tipo = 'despesa'` only.
+- Loan pendente/recebido follows the `summary_pessoal.blade.php` definition (`valor(emprestimo) − valor(pagamento_emprestimo)` grouped by `id_cliente`) — **not** the dashboard's older definition (`data_recebimento` on the `emprestimo` row itself). The two are intentionally left unreconciled; don't assume they agree.
+- The next-3-months forecast badge (tranquilo/atenção/no vermelho/"sem dados ainda") is a heuristic comparing predicted `sobra` (receita − despesa) as a % of that future month's receita; falls back to a neutral "sem dados ainda" when no `tipo = 'lucro'` transaction is logged yet for that month — common in this workspace, since income tends to get logged close to the date rather than in advance.
+
 ## Database
 
 - Both v1 (CakePHP) and v2 (Laravel) read/write the **same MySQL schema**. Table names are largely Portuguese/legacy (`transacoes`, `clientes`, `categorias`, `de_para_transacoes`) since v2 was built on top of v1's schema — don't assume Laravel default naming conventions when writing raw queries or migrations.
