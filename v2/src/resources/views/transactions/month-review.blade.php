@@ -21,8 +21,21 @@
   .mr-badge-atencao   { background: #FDF4E7; color: #8A5A1C; border: 1px solid #F0C77E; }
   .mr-badge-vermelho  { background: #FEF2F2; color: #9B1C1C; border: 1px solid #FCA5A5; }
   .mr-badge-sem_dados { background: #F1F3F5; color: #6c757d; border: 1px solid #dee2e6; }
+  .mr-badge-planejado { background: #EFF6FF; color: #1D4A7C; border: 1px solid #93C5FD; }
+  .mr-badge-agendado  { background: #FDF4E7; color: #8A5A1C; border: 1px solid #F0C77E; }
+  .mr-badge-atrasado  { background: #FEF2F2; color: #9B1C1C; border: 1px solid #FCA5A5; }
+  .mr-dot-necessidade { width: 8px; height: 8px; border-radius: 50%; background: #DC2626; display: inline-block; flex: none; }
+  .mr-dot-desejo { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #ADB5BD; display: inline-block; flex: none; }
+  .mr-wish-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 18px 20px; }
+  .mr-months-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 18px 20px; }
+  @media (max-width: 900px) {
+    .mr-wish-grid, .mr-months-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
   @media (max-width: 767px) {
     .mr-two-col { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .mr-wish-grid, .mr-months-grid { grid-template-columns: minmax(0, 1fr); }
   }
 </style>
 
@@ -32,12 +45,12 @@
   <div class="container">
     <div class="row mb-2">
       <div class="col-sm-6">
-        <h1 class="m-0 text-dark">Revisão mensal</h1>
+        <h1 class="m-0 text-dark">Nosso Mês</h1>
       </div>
       <div class="col-sm-6">
         <ol class="breadcrumb float-sm-right">
           <li class="breadcrumb-item"><a href="{{ url('/') }}">Dashboard</a></li>
-          <li class="breadcrumb-item active">Revisão mensal</li>
+          <li class="breadcrumb-item active">Nosso Mês</li>
         </ol>
       </div>
     </div>
@@ -54,7 +67,7 @@
              class="btn btn-sm btn-outline-secondary rounded-circle mr-2" title="Mês anterior">
             <i class="fas fa-chevron-left"></i>
           </a>
-          <h2 class="m-0" style="font-weight:700;">Revisão de {{ $mesesNomes[(int) $month] ?? $month }}</h2>
+          <h2 class="m-0" style="font-weight:700;">Nosso {{ $mesesNomes[(int) $month] ?? $month }}</h2>
           <a href="{{ route('transactions.monthReview', [$nextMonthObj->format('Y'), (int) $nextMonthObj->format('m')]) }}"
              class="btn btn-sm btn-outline-secondary rounded-circle ml-2" title="Próximo mês">
             <i class="fas fa-chevron-right"></i>
@@ -76,7 +89,7 @@
           Esse mês, além do que entrou, ainda faltam
         @endif
       </div>
-      <div style="font-size:2.2rem;font-weight:700;line-height:1;">R$ {{ number_format(abs($sobraPrevista), 2, ',', '.') }}</div>
+      <div style="font-size:2.4rem;font-weight:700;line-height:1;">R$ {{ number_format(abs($sobraPrevista), 2, ',', '.') }}</div>
       <div style="font-size:.88rem;opacity:.9;margin-top:10px;">
         Entrou R$ {{ number_format($totalEntrou, 2, ',', '.') }}
         &nbsp;·&nbsp;
@@ -285,28 +298,89 @@
           <span class="mr-card-sub">previsão com base no que já está lançado</span>
         </div>
       </div>
-      <div class="row" style="padding:18px 20px;margin:0;">
+      <div class="mr-months-grid">
         @php
           $badgeLabels = ['tranquilo' => 'tranquilo', 'atencao' => 'atenção', 'vermelho' => 'no vermelho', 'sem_dados' => 'sem dados ainda'];
         @endphp
         @foreach ($proximosMeses as $pm)
-          <div class="col-md-4 mb-2 mb-md-0">
-            <div style="border:1px solid {{ $pm['badge'] === 'vermelho' ? '#FCA5A5' : '#eef0f2' }};background:{{ $pm['badge'] === 'vermelho' ? '#FEF2F2' : '#fff' }};border-radius:.25rem;padding:14px 16px;position:relative;">
-              <a href="{{ route('transactions.month', [$pm['year'], $pm['month']]) }}" class="mr-row-btn" style="position:absolute;top:10px;right:10px;" title="Ver lançamentos do mês">
-                <i class="fa fa-search fa-xs"></i>
-              </a>
-              <div class="d-flex justify-content-between align-items-center" style="padding-right:28px;">
-                <span style="font-weight:700;">{{ $mesesNomes[$pm['month']] ?? $pm['month'] }}</span>
-                <span class="mr-badge mr-badge-{{ $pm['badge'] }}">{{ $badgeLabels[$pm['badge']] }}</span>
-              </div>
-              <div style="font-size:1.3rem;font-weight:700;margin-top:8px;">R$ {{ number_format($pm['total'], 2, ',', '.') }}</div>
+          <div style="border:1px solid {{ $pm['badge'] === 'vermelho' ? '#FCA5A5' : '#eef0f2' }};background:{{ $pm['badge'] === 'vermelho' ? '#FEF2F2' : '#fff' }};border-radius:.25rem;padding:14px 16px;position:relative;">
+            <a href="{{ route('transactions.month', [$pm['year'], $pm['month']]) }}" class="mr-row-btn" style="position:absolute;top:10px;right:10px;" title="Ver lançamentos do mês">
+              <i class="fa fa-search fa-xs"></i>
+            </a>
+            <div class="d-flex justify-content-between align-items-center" style="padding-right:28px;">
+              <span style="font-weight:700;">{{ $mesesNomes[$pm['month']] ?? $pm['month'] }}</span>
+              <span class="mr-badge mr-badge-{{ $pm['badge'] }}">{{ $badgeLabels[$pm['badge']] }}</span>
             </div>
+            <div style="font-size:1.3rem;font-weight:700;margin-top:8px;">R$ {{ number_format($pm['total'], 2, ',', '.') }}</div>
           </div>
         @endforeach
       </div>
     </div>
 
-    {{-- Sonhos e planos entra na próxima fase --}}
+    {{-- Nossos sonhos e planos --}}
+    @if ($sonhosDesejo->isNotEmpty() || $necessidadesAtrasadas->isNotEmpty())
+    <div class="mr-card mb-3">
+      <div class="mr-card-header" style="background:linear-gradient(135deg,#1B5E5C,#2D8B86);border-radius:.25rem .25rem 0 0;border-bottom:none;">
+        <div>
+          <h6 class="mr-card-title" style="color:#fff;"><i class="fas fa-heart"></i> Nossos sonhos e planos</h6>
+          <span style="color:rgba(255,255,255,.85);font-size:.82rem;">o que a gente quer fazer juntos, puxado das Manutenções</span>
+        </div>
+        <a href="{{ route('planejamento.index') }}" style="color:#fff;font-size:.82rem;text-decoration:underline;">ver tudo</a>
+      </div>
+
+      @if ($sonhosDesejo->isNotEmpty())
+      @php
+        $tipoIcon = ['casa' => 'fa-home', 'carro' => 'fa-car', 'outro' => 'fa-star'];
+        $statusLabels = ['planejado' => 'Planejado', 'agendado' => 'Agendado'];
+      @endphp
+      <div class="mr-wish-grid">
+        @foreach ($sonhosDesejo as $item)
+          @php
+            $bem = optional($item->planejamento)->bem;
+            $icon = $tipoIcon[optional($bem)->tipo] ?? 'fa-star';
+            $statusLabel = $statusLabels[$item->status] ?? ucfirst($item->status);
+            $badgeClass = $item->status === 'agendado' ? 'mr-badge-agendado' : 'mr-badge-planejado';
+          @endphp
+          <div style="border:1px solid #eef0f2;border-radius:.25rem;padding:16px;display:flex;flex-direction:column;gap:10px;">
+            <div class="d-flex align-items-center" style="gap:8px;">
+              <span class="mr-dot-desejo"></span>
+              <span style="font-size:.76rem;color:#8a94a3;">Desejo</span>
+            </div>
+            <div class="d-flex align-items-center" style="gap:8px;">
+              <i class="fas {{ $icon }}" style="color:#2D8B86;"></i>
+              <span style="font-weight:700;">{{ $item->titulo }}</span>
+            </div>
+            <div style="font-size:1.15rem;font-weight:700;">R$ {{ number_format($item->valor, 2, ',', '.') }}</div>
+            <span class="mr-badge {{ $badgeClass }}">
+              {{ $statusLabel }}@if ($item->status === 'agendado' && $item->data_vencimento) · {{ $mesesNomes[$item->data_vencimento->month] }}@endif
+            </span>
+            @if ($bem)
+              <div class="text-muted" style="font-size:.8rem;">{{ $bem->nome }}</div>
+            @endif
+          </div>
+        @endforeach
+      </div>
+      @endif
+
+      @if ($necessidadesAtrasadas->isNotEmpty())
+      <div style="padding:0 20px 18px;display:flex;flex-direction:column;gap:8px;">
+        @foreach ($necessidadesAtrasadas as $item)
+          <div style="border:1px solid #FCA5A5;background:#FEF2F2;border-radius:.25rem;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div class="d-flex align-items-center" style="gap:10px;">
+              <span class="mr-dot-necessidade"></span>
+              <span style="font-size:.76rem;color:#9B1C1C;">Necessidade</span>
+              <span style="font-weight:700;">{{ $item->titulo }}</span>
+            </div>
+            <div class="d-flex align-items-center" style="gap:14px;">
+              <strong>R$ {{ number_format($item->valor, 2, ',', '.') }}</strong>
+              <span class="mr-badge mr-badge-atrasado">Atrasado</span>
+            </div>
+          </div>
+        @endforeach
+      </div>
+      @endif
+    </div>
+    @endif
 
   </div>
 </div>

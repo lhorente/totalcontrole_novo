@@ -47,7 +47,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
           <li class="nav-item dropdown">
             <a id="dropdownSubMenu1" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="nav-link dropdown-toggle">Financeiro</a>
             <ul aria-labelledby="dropdownSubMenu1" class="dropdown-menu border-0 shadow">
-              <li><a href="{{ route('transactions.monthReview') }}" class="dropdown-item">Revisão Mensal</a></li>
+              <li><a href="{{ route('transactions.monthReview') }}" class="dropdown-item">Nosso Mês</a></li>
               <li><a href="{{ url('/transactions/month') }}" class="dropdown-item">Resumo Mensal</a></li>
               <li><a href="{{ route('transactions.creditCards') }}" class="dropdown-item">Cartões de crédito</a></li>
               <li><a href="{{ url('/wallets/dashboard') }}" class="dropdown-item">Resumo de carteiras</a></li>

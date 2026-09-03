@@ -10,6 +10,7 @@ use App\Models\CreditCard;
 use App\Models\Wallet;
 use App\Models\Workspace;
 use App\Models\TransactionMapping;
+use App\Models\Evento;
 use App\Http\Requests\StoreContact;
 use App\Http\Requests\ImportCsvRequest;
 use App\Services\CsvParserService;
@@ -427,6 +428,24 @@ class TransactionsController extends Controller
       ];
     }
 
+    // Nossos sonhos e planos
+    $sonhosDesejo = Evento::modulo('planejamento')
+      ->whereNotIn('status', ['concluido', 'cancelado'])
+      ->whereHas('planejamento', fn($q) => $q->where('prioridade', 'desejo'))
+      ->with('planejamento.bem')
+      ->orderByRaw('data_vencimento IS NULL, data_vencimento')
+      ->limit(3)
+      ->get();
+
+    $necessidadesAtrasadas = Evento::modulo('planejamento')
+      ->whereNotIn('status', ['concluido', 'cancelado'])
+      ->whereNotNull('data_vencimento')
+      ->where('data_vencimento', '<', now()->startOfDay())
+      ->whereHas('planejamento', fn($q) => $q->where('prioridade', 'necessidade'))
+      ->with('planejamento.bem')
+      ->orderBy('data_vencimento')
+      ->get();
+
     $currentDateObj = new \DateTime;
     $currentDateObj->setDate($year, $month ?: date('m'), 1);
     $currentDateObj->setTime(0, 0);
@@ -458,7 +477,9 @@ class TransactionsController extends Controller
       'emprestimosTotal',
       'pagamentosTotal',
       'emprestimosPorPessoa',
-      'pagamentosPorPessoa'
+      'pagamentosPorPessoa',
+      'sonhosDesejo',
+      'necessidadesAtrasadas'
     ));
   }
 
