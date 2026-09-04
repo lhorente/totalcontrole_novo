@@ -56,6 +56,17 @@
                     <label>Últimos 4 dígitos</label>
                     <input type="text" name="ultimos_digitos" class="form-control" maxlength="4" placeholder="Só necessário para cartões virtuais, ex.: 1234">
                   </div>
+
+                  <div class="form-group">
+                    <label>Categoria padrão</label>
+                    <select name="id_categoria_padrao" class="form-control">
+                      <option value="">Nenhuma</option>
+                      @foreach ($categorias as $categoria)
+                        <option value="{{ $categoria->id }}">{{ $categoria->nome }}</option>
+                      @endforeach
+                    </select>
+                    <small class="form-text text-muted">Categoria sugerida automaticamente para lançamentos deste cartão.</small>
+                  </div>
                 </div>
               </div>
 

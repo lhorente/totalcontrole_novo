@@ -43,6 +43,7 @@ class StoreCreditCard extends FormRequest
             },
           ],
           'ultimos_digitos' => 'nullable|digits:4',
+          'id_categoria_padrao' => 'nullable|exists:categorias,id',
         ];
     }
 
@@ -60,6 +61,7 @@ class StoreCreditCard extends FormRequest
             'dia_vencimento.between' => 'Dia de vencimento inválido',
             'id_cartao_pai.exists' => 'Cartão pai inválido',
             'ultimos_digitos.digits' => 'Os últimos dígitos devem ter exatamente 4 números',
+            'id_categoria_padrao.exists' => 'Categoria padrão inválida',
           ];
     }
 }

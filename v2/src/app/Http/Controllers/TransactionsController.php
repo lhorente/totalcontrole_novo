@@ -903,7 +903,7 @@ class TransactionsController extends Controller
     $cartoes = CreditCard::where('id_usuario', Auth::id())
                           ->where('status', 'ativo')
                           ->whereNull('id_cartao_pai')
-                          ->with('children')
+                          ->with('children.defaultCategory')
                           ->get();
 
     $categorias = Category::where('id_workspace', session('active_workspace_id'))

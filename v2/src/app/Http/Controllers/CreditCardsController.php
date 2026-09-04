@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\CreditCard;
+use App\Models\Category;
 use App\Http\Requests\StoreCreditCard;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,13 +18,15 @@ class CreditCardsController extends Controller
 
   public function new(){
     $parent_cards = $this->getPossibleParentCards();
-    return view('credit_cards/new', compact('parent_cards'));
+    $categorias = Category::getCategories();
+    return view('credit_cards/new', compact('parent_cards', 'categorias'));
   }
 
   public function edit($id){
     $credit_card = CreditCard::getCreditCard($id);
     $parent_cards = $this->getPossibleParentCards($id);
-    return view('credit_cards/edit',compact('credit_card', 'parent_cards'));
+    $categorias = Category::getCategories();
+    return view('credit_cards/edit',compact('credit_card', 'parent_cards', 'categorias'));
   }
 
   private function getPossibleParentCards($excludeId = null){
@@ -51,6 +54,7 @@ class CreditCardsController extends Controller
     $credit_card->dia_vencimento = $request->input('dia_vencimento');
     $credit_card->id_cartao_pai = $request->input('id_cartao_pai') ?: null;
     $credit_card->ultimos_digitos = $request->input('ultimos_digitos') ?: null;
+    $credit_card->id_categoria_padrao = $request->input('id_categoria_padrao') ?: null;
 
     if ($credit_card->save()){
       return redirect('/credit_cards')->with('success', 'Cartão de crédito salvo com sucesso');

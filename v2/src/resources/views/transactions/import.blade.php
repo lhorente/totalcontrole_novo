@@ -167,11 +167,22 @@
   </div>
 </div>
 
+@php
+  $subcartoesPorCartaoData = $cartoes->mapWithKeys(function ($c) {
+    $children = $c->children->map(function ($sub) {
+      return [
+        'descricao' => $sub->descricao,
+        'ultimos_digitos' => $sub->ultimos_digitos,
+        'categoria_padrao_id' => $sub->defaultCategory->id ?? null,
+        'categoria_padrao_nome' => $sub->defaultCategory->nome ?? null,
+      ];
+    })->values();
+    return [$c->id => $children];
+  });
+@endphp
 <script>
   var categoriasPrompt = @json($categorias->map(fn($c) => $c->id . ' - ' . $c->nome)->join("\n"));
-  var subcartoesPorCartao = @json($cartoes->mapWithKeys(fn($c) => [
-    $c->id => $c->children->map(fn($sub) => ['descricao' => $sub->descricao, 'ultimos_digitos' => $sub->ultimos_digitos])->values(),
-  ]));
+  var subcartoesPorCartao = @json($subcartoesPorCartaoData);
 
   var sectionFile     = document.getElementById('section-file');
   var sectionText     = document.getElementById('section-text');
@@ -313,8 +324,13 @@ var prompt;
     var subcartoes = subcartoesPorCartao[cartaoInput.value] || [];
     if (subcartoes.length > 0) {
       var listaSubcartoes = subcartoes.map(function(s) {
-        return '- ' + s.descricao + (s.ultimos_digitos ? ' (final ' + s.ultimos_digitos + ')' : ' (final ainda não cadastrado)');
+        var linha = '- ' + s.descricao + (s.ultimos_digitos ? ' (final ' + s.ultimos_digitos + ')' : ' (final ainda não cadastrado)');
+        if (s.categoria_padrao_id) {
+          linha += ' → categoria padrão: ' + s.categoria_padrao_id + ' - ' + s.categoria_padrao_nome;
+        }
+        return linha;
       }).join('\n');
+      var temCategoriaPadrao = subcartoes.some(function(s) { return s.categoria_padrao_id; });
       prompt = 'Analise a fatura do cartão "' + cartao + '" que estou enviando em PDF e extraia todas as transações, identificando também qual cartão virtual foi usado em cada uma pelos últimos 4 dígitos — o PDF agrupa os lançamentos por cartão virtual, cada bloco mostrando os últimos 4 dígitos daquele cartão.\n\n' +
         'Retorne SOMENTE um arquivo CSV, sem explicações adicionais, com as seguintes colunas:\n' +
         'data;descricao;valor;categoria;ultimos_digitos\n\n' +
@@ -335,7 +351,9 @@ var prompt;
         '- Não inclua cabeçalho com acento ou espaço\n' +
         '- Separe os campos por ponto e vírgula\n' +
         '- Uma transação por linha\n\n' +
-        '- Na coluna categoria, adicione o ID da categoria, com base na relação de categorias abaixo:\n\n' +
+        (temCategoriaPadrao
+          ? '- Na coluna categoria, siga esta prioridade: (1) se você identificou o cartão virtual da transação (ultimos_digitos preenchido) E esse cartão tem "categoria padrão" na lista acima, use o ID dessa categoria padrão diretamente, sem tentar inferir outra; (2) caso contrário (cartão não identificado ou sem categoria padrão cadastrada), infira o ID a partir da relação de categorias do sistema abaixo:\n\n'
+          : '- Na coluna categoria, adicione o ID da categoria, com base na relação de categorias abaixo:\n\n') +
         categoriasPrompt + '\n\n' +
         'Validação obrigatória antes de responder: some os valores de todas as transações e confira contra o "Total da Fatura" impresso no PDF. Corrija a extração caso haja divergência.';
     } else if (/nubank/i.test(cartao)) {

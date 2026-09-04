@@ -36,4 +36,9 @@ class CreditCard extends Model
   {
     return !is_null($this->id_cartao_pai);
   }
+
+  public function defaultCategory()
+  {
+    return $this->belongsTo(Category::class, 'id_categoria_padrao');
+  }
 }
