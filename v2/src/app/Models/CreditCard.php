@@ -21,4 +21,19 @@ class CreditCard extends Model
   static function getCreditCard($id){
     return self::where('id_usuario',Auth::id())->where('id',$id)->first();
   }
+
+  public function parent()
+  {
+    return $this->belongsTo(CreditCard::class, 'id_cartao_pai');
+  }
+
+  public function children()
+  {
+    return $this->hasMany(CreditCard::class, 'id_cartao_pai');
+  }
+
+  public function isVirtual()
+  {
+    return !is_null($this->id_cartao_pai);
+  }
 }

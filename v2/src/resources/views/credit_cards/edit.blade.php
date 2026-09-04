@@ -42,6 +42,22 @@
                     <label>Dia de vencimento</label>
                     <input type="text" name="dia_vencimento" class="form-control" placeholder="Dia de vencimento do cartão. Valores permitidos de 1 a 31." value="{{ $credit_card->dia_vencimento }}">
                   </div>
+
+                  <div class="form-group">
+                    <label>Cartão pai</label>
+                    <select name="id_cartao_pai" class="form-control">
+                      <option value="">Nenhum (é um cartão físico)</option>
+                      @foreach ($parent_cards as $parent_card)
+                        <option value="{{ $parent_card->id }}" {{ $credit_card->id_cartao_pai == $parent_card->id ? 'selected' : '' }}>{{ $parent_card->descricao }}</option>
+                      @endforeach
+                    </select>
+                    <small class="form-text text-muted">Selecione um cartão físico se este for um cartão virtual (subcartão) vinculado a ele.</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Últimos 4 dígitos</label>
+                    <input type="text" name="ultimos_digitos" class="form-control" maxlength="4" placeholder="Só necessário para cartões virtuais, ex.: 1234" value="{{ $credit_card->ultimos_digitos }}">
+                  </div>
                 </div>
               </div>
 

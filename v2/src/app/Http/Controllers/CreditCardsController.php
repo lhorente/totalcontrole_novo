@@ -16,12 +16,23 @@ class CreditCardsController extends Controller
   }
 
   public function new(){
-    return view('credit_cards/new');
+    $parent_cards = $this->getPossibleParentCards();
+    return view('credit_cards/new', compact('parent_cards'));
   }
 
   public function edit($id){
     $credit_card = CreditCard::getCreditCard($id);
-    return view('credit_cards/edit',compact('credit_card'));
+    $parent_cards = $this->getPossibleParentCards($id);
+    return view('credit_cards/edit',compact('credit_card', 'parent_cards'));
+  }
+
+  private function getPossibleParentCards($excludeId = null){
+    return CreditCard::where('id_usuario', Auth::id())
+                      ->where('status', 'ativo')
+                      ->whereNull('id_cartao_pai')
+                      ->when($excludeId, fn($query) => $query->where('id', '!=', $excludeId))
+                      ->orderBy('descricao')
+                      ->get();
   }
 
   // public function store(){
@@ -38,6 +49,8 @@ class CreditCardsController extends Controller
 
     $credit_card->descricao = $request->input('descricao');
     $credit_card->dia_vencimento = $request->input('dia_vencimento');
+    $credit_card->id_cartao_pai = $request->input('id_cartao_pai') ?: null;
+    $credit_card->ultimos_digitos = $request->input('ultimos_digitos') ?: null;
 
     if ($credit_card->save()){
       return redirect('/credit_cards')->with('success', 'Cartão de crédito salvo com sucesso');

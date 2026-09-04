@@ -23,6 +23,7 @@
     $duplicadas = $transactions->filter(function($t) { return $t['is_duplicada'] ?? false; })->count();
     $valorDuplicadas = $transactions->filter(function($t) { return $t['is_duplicada_por_valor'] ?? false; })->count();
     $valorAproximadoDuplicadas = $transactions->filter(function($t) { return $t['is_duplicada_por_valor_aproximado'] ?? false; })->count();
+    $cartoesNaoIdentificados = $transactions->filter(function($t) { return $t['cartao_nao_identificado'] ?? false; })->count();
   @endphp
 
 <div class="content">
@@ -42,6 +43,14 @@
               <div class="t-topbar-pill" id="pill-dup"> {{ $duplicadas }} duplicatas</div>
             </div>
         </div>
+
+        @if($cartoesNaoIdentificados > 0)
+        <div class="alert alert-dismissible mt-2 mb-2" style="background-color:#fde8d0;border-color:#f59f55;color:#7a4a0a;">
+          <button type="button" class="close" data-dismiss="alert">&times;</button>
+          <i class="icon fas fa-exclamation-triangle"></i>
+          <strong>{{ $cartoesNaoIdentificados }}</strong> lançamento(s) com últimos dígitos que não batem com nenhum subcartão cadastrado — selecione o cartão correto manualmente nessas linhas (destacadas abaixo).
+        </div>
+        @endif
 
         <div class="t-quickbar">
           <span class="t-quickbar-label">Aplicar ao selecionado:</span>
@@ -112,10 +121,19 @@
                     : (($transaction['is_duplicada_por_valor_aproximado'] ?? false) ? 2 : 3));
                   @endphp
 
-                  <div class="t-row" id="row-{{ $loop->index }}" onclick="handleRowClick(event, this)" data-categoria="{{ $transaction['id_categoria'] }}" data-descricao="{{ $transaction['descricao_banco'] }}">
+                  <div class="t-row {{ $transaction['cartao_nao_identificado'] ?? false ? 'tr-cartao-nao-identificado' : '' }}" id="row-{{ $loop->index }}" onclick="handleRowClick(event, this)" data-categoria="{{ $transaction['id_categoria'] }}" data-descricao="{{ $transaction['descricao_banco'] }}">
                     <input type="hidden" name="transacoes[{{ $loop->index }}][chave_banco]" value="{{ $transaction['chave_banco'] }}" readonly>
                     <input type="hidden" name="transacoes[{{ $loop->index }}][data_banco]" value="{{ $transaction['data_banco'] }}" readonly>
-                    <input type="hidden" name="transacoes[{{ $loop->index }}][id_cartao]" value="{{ $id_cartao }}" readonly>
+                    @if($transaction['cartao_nao_identificado'] ?? false)
+                      <select class="t-row-sel" name="transacoes[{{ $loop->index }}][id_cartao]" title="Últimos dígitos não encontrados em nenhum subcartão — selecione manualmente">
+                        <option value="{{ $id_cartao }}">Cartão base</option>
+                        @foreach ($subcartoes as $subcartao)
+                          <option value="{{ $subcartao->id }}">{{ $subcartao->descricao }}</option>
+                        @endforeach
+                      </select>
+                    @else
+                      <input type="hidden" name="transacoes[{{ $loop->index }}][id_cartao]" value="{{ $transaction['id_cartao'] }}" readonly>
+                    @endif
                     <input type="hidden" name="transacoes[{{ $loop->index }}][descricao_banco]" value="{{ $transaction['descricao_banco'] }}" readonly>
                     <input type="hidden" name="transacoes[{{ $loop->index }}][valor]" value="{{ $transaction['valor'] }}" {{ $transaction['is_duplicada'] ? '' : 'required' }}>
 
@@ -129,6 +147,17 @@
                       @if (!empty($transaction['descricao_sugerida']))
                         <span class="badge badge-info" style="font-size:9px;vertical-align:middle;">De/Para</span>
                         <div style="font-size:11px;color:#888;">Banco: {{ $transaction['descricao_banco'] }}</div>
+                      @endif
+
+                      @php
+                        $rowSubcartao = ($transaction['id_cartao'] ?? null) != $id_cartao
+                          ? $subcartoes->firstWhere('id', $transaction['id_cartao'])
+                          : null;
+                      @endphp
+                      @if ($rowSubcartao)
+                        <span class="badge badge-secondary" style="font-size:9px;vertical-align:middle;">{{ $rowSubcartao->descricao }}</span>
+                      @elseif ($transaction['cartao_nao_identificado'] ?? false)
+                        <span class="badge badge-warning" style="font-size:9px;vertical-align:middle;">Cartão não identificado</span>
                       @endif
 
                       @if($transaction['is_duplicada'])
@@ -358,6 +387,12 @@
   }
   .tr-valor-aproximado:hover {
     background-color: #cce6f8 !important;
+  }
+  .tr-cartao-nao-identificado {
+    background-color: #fde8d0 !important;
+  }
+  .tr-cartao-nao-identificado:hover {
+    background-color: #fbd4b0 !important;
   }
 
     .t-expand-alert { border-left: 3px solid; padding: 8px 10px; border-radius: 0 6px 6px 0; font-size: 12px; margin: 5px 0 10px 0; }

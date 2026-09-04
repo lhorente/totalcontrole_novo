@@ -169,6 +169,9 @@
 
 <script>
   var categoriasPrompt = @json($categorias->map(fn($c) => $c->id . ' - ' . $c->nome)->join("\n"));
+  var subcartoesPorCartao = @json($cartoes->mapWithKeys(fn($c) => [
+    $c->id => $c->children->map(fn($sub) => ['descricao' => $sub->descricao, 'ultimos_digitos' => $sub->ultimos_digitos])->values(),
+  ]));
 
   var sectionFile     = document.getElementById('section-file');
   var sectionText     = document.getElementById('section-text');
@@ -307,7 +310,35 @@
       return;
     }
 var prompt;
-    if (/nubank/i.test(cartao)) {
+    var subcartoes = subcartoesPorCartao[cartaoInput.value] || [];
+    if (subcartoes.length > 0) {
+      var listaSubcartoes = subcartoes.map(function(s) {
+        return '- ' + s.descricao + (s.ultimos_digitos ? ' (final ' + s.ultimos_digitos + ')' : ' (final ainda não cadastrado)');
+      }).join('\n');
+      prompt = 'Analise a fatura do cartão "' + cartao + '" que estou enviando em PDF e extraia todas as transações, identificando também qual cartão virtual foi usado em cada uma pelos últimos 4 dígitos — o PDF agrupa os lançamentos por cartão virtual, cada bloco mostrando os últimos 4 dígitos daquele cartão.\n\n' +
+        'Retorne SOMENTE um arquivo CSV, sem explicações adicionais, com as seguintes colunas:\n' +
+        'data;descricao;valor;categoria;ultimos_digitos\n\n' +
+        'Cartões virtuais já cadastrados neste cartão físico (use como referência, mas confie no que estiver escrito no PDF):\n' +
+        listaSubcartoes + '\n\n' +
+        'Regras de leitura do PDF:\n' +
+        '- O PDF agrupa as transações por cartão virtual, cada grupo trazendo os últimos 4 dígitos daquele cartão\n' +
+        '- Preencha ultimos_digitos com os 4 dígitos do grupo a que a transação pertence; se não conseguir identificar com certeza, deixe o campo vazio\n' +
+        '- As datas vêm sem ano (DD/MM); use a data do extrato impressa no topo do PDF para inferir o ano: meses iguais ou anteriores ao mês do extrato pertencem ao mesmo ano do extrato, meses posteriores (parcelas antigas) pertencem ao ano anterior\n' +
+        '- Alguns lançamentos quebram em várias linhas quando a descrição é longa; reconstrua essas quebras como um único lançamento\n' +
+        '- NÃO inclua linhas de saldo anterior ou pagamento da fatura anterior; são apenas o saldo transportado, não transações do período\n\n' +
+        'Regras de formatação da saída:\n' +
+        '- data no formato DD/MM/YYYY\n' +
+        '- descricao: nome do estabelecimento/lançamento, incluindo o número da parcela quando houver\n' +
+        '- valor: número decimal com vírgula (ex: 49,90)\n' +
+        '- sinal do valor: positivo para compras; negativo para pagamentos e estornos/créditos\n' +
+        '- ultimos_digitos: 4 dígitos numéricos do cartão virtual, ou vazio se não identificado\n' +
+        '- Não inclua cabeçalho com acento ou espaço\n' +
+        '- Separe os campos por ponto e vírgula\n' +
+        '- Uma transação por linha\n\n' +
+        '- Na coluna categoria, adicione o ID da categoria, com base na relação de categorias abaixo:\n\n' +
+        categoriasPrompt + '\n\n' +
+        'Validação obrigatória antes de responder: some os valores de todas as transações e confira contra o "Total da Fatura" impresso no PDF. Corrija a extração caso haja divergência.';
+    } else if (/nubank/i.test(cartao)) {
       prompt = 'Analise o arquivo OFX da fatura do cartão "' + cartao + '" (Nubank) que estou enviando e extraia todas as transações.\n\n' +
         'Retorne SOMENTE um arquivo CSV, sem explicações adicionais, com as seguintes colunas:\n' +
         'data;descricao;valor;categoria\n\n' +

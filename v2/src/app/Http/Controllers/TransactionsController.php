@@ -900,7 +900,11 @@ class TransactionsController extends Controller
 
   public function import()
   {
-    $cartoes = CreditCard::where('id_usuario', Auth::id())->where('status', 'ativo')->get();
+    $cartoes = CreditCard::where('id_usuario', Auth::id())
+                          ->where('status', 'ativo')
+                          ->whereNull('id_cartao_pai')
+                          ->with('children')
+                          ->get();
 
     $categorias = Category::where('id_workspace', session('active_workspace_id'))
                           ->where('status', 'a')
@@ -934,13 +938,31 @@ class TransactionsController extends Controller
     $idCartao = $request->input('id_cartao');
     $dataFaturaCarbon = Carbon::parse($dataFatura);
 
+    // Subcartões (cartões virtuais) do cartão físico selecionado, indexados
+    // pelos últimos 4 dígitos, pra resolver o cartão real de cada linha.
+    $subcartoes = CreditCard::where('id_cartao_pai', $idCartao)->get();
+    $subcartoesPorDigitos = $subcartoes->keyBy('ultimos_digitos');
+
     // Verifica duplicatas para cada transação
-    $transactions = $transactions->map(function($transaction, $idx) use ($dataFatura, $idCartao, $dataFaturaCarbon) {
+    $transactions = $transactions->map(function($transaction, $idx) use ($dataFatura, $idCartao, $dataFaturaCarbon, $subcartoesPorDigitos) {
       $dataBanco = $transaction['data_banco'] ?? '';
       $descricao = $transaction['descricao_banco'] ?? '';
       $valor = $transaction['valor'] ?? 0;
       $chaveBanco = Transaction::generateChaveBanco($dataBanco, $descricao, $valor, $dataFatura);
-      
+
+      // Resolve o cartão real da linha via últimos dígitos (quando a fatura veio detalhada por subcartão)
+      $rowUltimosDigitos = trim($transaction['ultimos_digitos'] ?? '');
+      $rowCartaoId = $idCartao;
+      $cartaoNaoIdentificado = false;
+      if ($rowUltimosDigitos !== '') {
+        $subcartao = $subcartoesPorDigitos->get($rowUltimosDigitos);
+        if ($subcartao) {
+          $rowCartaoId = $subcartao->id;
+        } else {
+          $cartaoNaoIdentificado = true;
+        }
+      }
+
       // Verifica se já existe pela chave_banco
       $isDuplicada = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                   ->where('chave_banco', $chaveBanco)
@@ -951,7 +973,7 @@ class TransactionsController extends Controller
       $valorArredondado = round($valor, 2);
       $transacaoSimilar = !$isDuplicada ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                   ->where('id_usuario', Auth::id())
-                                  ->where('id_cartao', $idCartao)
+                                  ->where('id_cartao', $rowCartaoId)
                                   ->whereRaw('ROUND(valor, 2) = ?', [$valorArredondado])
                                   ->whereYear('data', $dataFaturaCarbon->year)
                                   ->whereMonth('data', $dataFaturaCarbon->month)
@@ -962,13 +984,13 @@ class TransactionsController extends Controller
       $valorInteiro = (int) floor(abs($valor));
       $transacaoSimilarAproximada = (!$isDuplicada && !$isDuplicadaPorValor) ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
                                   ->where('id_usuario', Auth::id())
-                                  ->where('id_cartao', $idCartao)
+                                  ->where('id_cartao', $rowCartaoId)
                                   ->whereRaw('FLOOR(ABS(valor)) = ?', [$valorInteiro])
                                   ->whereYear('data', $dataFaturaCarbon->year)
                                   ->whereMonth('data', $dataFaturaCarbon->month)
                                   ->first() : null;
       $isDuplicadaPorValorAproximado = $transacaoSimilarAproximada !== null;
-      
+
       $transaction['is_duplicada'] = $isDuplicada;
       $transaction['is_duplicada_por_valor'] = $isDuplicadaPorValor;
       $transaction['duplicada_por_valor_descricao'] = $isDuplicadaPorValor ? ($transacaoSimilar->descricao ?: $transacaoSimilar->descricao_banco) : null;
@@ -978,6 +1000,8 @@ class TransactionsController extends Controller
       $transaction['duplicada_por_valor_aproximado_valor'] = $isDuplicadaPorValorAproximado ? $transacaoSimilarAproximada->valor : null;
       $transaction['chave_banco'] = $chaveBanco;
       $transaction['data_banco'] = $dataBanco;
+      $transaction['id_cartao'] = $rowCartaoId;
+      $transaction['cartao_nao_identificado'] = $cartaoNaoIdentificado;
       $transaction['_key'] = $idx;
 
       // Sugestão de local/categoria a partir do De <> Para cadastrado.
@@ -1021,6 +1045,7 @@ class TransactionsController extends Controller
         );
         $futureDate   = Carbon::parse($dataFatura)->addMonths($i);
         $futureVal    = $transaction['valor'];
+        $futureCartaoId = $transaction['id_cartao'] ?? $idCartao;
         $mesAno       = $futureDate->format('Y-m');
 
         // Chave futura (sem data_banco pois é gerada, não vem do CSV)
@@ -1035,7 +1060,7 @@ class TransactionsController extends Controller
         $futureSimilar = !$futureDupChave
           ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
               ->where('id_usuario', Auth::id())
-              ->where('id_cartao', $idCartao)
+              ->where('id_cartao', $futureCartaoId)
               ->whereRaw('ROUND(valor, 2) = ?', [$futureValArredondado])
               ->whereYear('data', $futureDate->year)
               ->whereMonth('data', $futureDate->month)
@@ -1047,7 +1072,7 @@ class TransactionsController extends Controller
         $futureSimilarAprox = (!$futureDupChave && !$futureDupValor)
           ? Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
               ->where('id_usuario', Auth::id())
-              ->where('id_cartao', $idCartao)
+              ->where('id_cartao', $futureCartaoId)
               ->whereRaw('FLOOR(ABS(valor)) = ?', [$futureValInteiro])
               ->whereYear('data', $futureDate->year)
               ->whereMonth('data', $futureDate->month)
@@ -1073,7 +1098,7 @@ class TransactionsController extends Controller
           'descricao'       => $futureMapeamento->descricao_local ?? $futureDesc,
           'valor'           => $futureVal,
           'data'            => $futureDate->format('Y-m-d'),
-          'id_cartao'       => $idCartao,
+          'id_cartao'       => $futureCartaoId,
           'data_banco'       => $transaction['data_banco'],
           'chave_banco'     => $futureChave,
           'id_categoria'    => $transaction['id_categoria'] ?? null,
@@ -1101,6 +1126,7 @@ class TransactionsController extends Controller
       'categorias'        => $categorias,
       'pessoas'           => $pessoas,
       'installmentGroups' => $installmentGroups,
+      'subcartoes'        => $subcartoes,
     ]);
   }
 

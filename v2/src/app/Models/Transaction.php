@@ -198,8 +198,11 @@ class Transaction extends Model
       $query->whereIn('id_categoria', $categoryIds);
     }
 
+    // Card filter: include child virtual cards (rollup to the physical card's invoice)
     if ($id_cartao) {
-      $query->where('id_cartao', $id_cartao);
+      $childCardIds = CreditCard::where('id_cartao_pai', $id_cartao)->pluck('id')->toArray();
+      $cardIds = array_merge([$id_cartao], $childCardIds);
+      $query->whereIn('id_cartao', $cardIds);
     }
 
     // id_pessoa maps to id_cliente column

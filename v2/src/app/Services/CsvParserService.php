@@ -45,6 +45,10 @@ class CsvParserService
 
             $idCategoriaCsv = isset($row[3]) ? (int) trim($row[3]) : null;
 
+            // Coluna opcional (5ª), usada quando a fatura foi detalhada por cartão
+            // virtual (últimos 4 dígitos), pra casar cada linha com o subcartão certo.
+            $ultimosDigitos = isset($row[4]) ? trim($row[4]) : null;
+
             $data->push([
                 'data_banco' => $row[0] ?? '',
                 'descricao_banco' => $descricao,
@@ -54,6 +58,7 @@ class CsvParserService
                 'tipo_lancamento' => 'despesa',
                 'id_pessoa' => null,
                 'installment' => $this->detectInstallment($descricao),
+                'ultimos_digitos' => $ultimosDigitos ?: null,
             ]);
         }
 
