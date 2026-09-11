@@ -43,6 +43,7 @@ services:
   total_controle_v2:
     build:
       context: ./v2
+    image: totalcontrole_v2:latest
     container_name: total_controle_v2
     ports:
       - "8092:80"
@@ -58,6 +59,31 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
     networks:
       - totalcontrole-net
+
+  # Roda o Laravel Scheduler (Kernel.php::schedule(), inclui o
+  # pluggy:sync-transactions diário) a cada minuto. Usa a mesma imagem já
+  # construída pelo total_controle_v2 (sem build/porta própria) só trocando
+  # o entrypoint -- é o equivalente em Docker Compose de um cron de host
+  # rodando `php artisan schedule:run` a cada minuto, sem depender de cron
+  # instalado no container nem no host.
+  total_controle_v2_scheduler:
+    image: totalcontrole_v2:latest
+    container_name: total_controle_v2_scheduler
+    volumes:
+      - ./v2/src:/var/www/html
+    depends_on:
+      totalcontrole_db:
+        condition: service_healthy
+      total_controle_v2:
+        condition: service_started
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - totalcontrole-net
+    entrypoint: ["sh", "-c", "while true; do php artisan schedule:run --no-interaction; sleep 60; done"]
 
 networks:
   totalcontrole-net:
