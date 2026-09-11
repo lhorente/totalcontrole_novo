@@ -76,6 +76,7 @@
         $initials = strtoupper(substr($card->descricao, 0, 2));
         $colors = ['bg-primary','bg-success','bg-danger','bg-warning','bg-info','bg-secondary'];
         $color = $colors[$loop->index % count($colors)];
+        $wsColors = ['#4e73df','#1cc88a','#e74a3b','#f6c23e','#36b9cc'];
       @endphp
       <div class="col-md-6 mb-3">
         <div class="card shadow-sm h-100">
@@ -105,7 +106,6 @@
             @if ($item['fatura'] > 0)
             {{-- Barra de breakdown --}}
             @php
-              $wsColors = ['#4e73df','#1cc88a','#e74a3b','#f6c23e','#36b9cc'];
               $wsList = collect($item['breakdown'])->values();
               $segments = [];
               foreach ($wsList as $idx => $b) {

@@ -25,6 +25,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
+        $schedule->command('pluggy:sync-transactions')->dailyAt('06:00')->withoutOverlapping();
     }
 
     /**

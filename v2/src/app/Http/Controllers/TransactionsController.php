@@ -14,6 +14,7 @@ use App\Models\Evento;
 use App\Http\Requests\StoreContact;
 use App\Http\Requests\ImportCsvRequest;
 use App\Services\CsvParserService;
+use App\Services\TransactionImportService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -1333,7 +1334,7 @@ class TransactionsController extends Controller
     ]);
   }
 
-  public function importStore(Request $request)
+  public function importStore(Request $request, TransactionImportService $transactionImportService)
   {
     $transacoes = $request->input('transacoes', []);
     $dataFatura = $request->input('data_fatura');
@@ -1356,49 +1357,32 @@ class TransactionsController extends Controller
     
     $idCaixa = $caixaPadrao ? $caixaPadrao->id : null;
 
-    DB::transaction(function () use ($transacoes, $dataFatura, $idCaixa, $workspaceId, $parcelasFuturas, &$count, &$duplicadas, &$parcelasCount) {
+    DB::transaction(function () use ($transactionImportService, $transacoes, $dataFatura, $idCaixa, $workspaceId, $parcelasFuturas, &$count, &$duplicadas, &$parcelasCount) {
       foreach ($transacoes as $item) {
         // Importa apenas se o checkbox estiver marcado
         if (!isset($item['importar']) || $item['importar'] != '1') {
           continue;
         }
 
-        // Usa a chave_banco que já foi calculada na preview
-        $chaveBanco = $item['chave_banco'] ?? null;
-        
-        // Se não tiver chave, gera uma nova (fallback)
-        if (!$chaveBanco) {
-          $dataBanco = $item['data_banco'] ?? '';
-          $descricao = $item['descricao_banco'] ?? '';
-          $valor = $item['valor'] ?? 0;
-          $chaveBanco = Transaction::generateChaveBanco($dataBanco, $descricao, $valor, $dataFatura);
-        }
-
-        // Verifica se já existe uma transação com essa chave
-        $existe = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
-                             ->where('chave_banco', $chaveBanco)
-                             ->where('id_usuario', Auth::id())
-                             ->exists();
-
-        if ($existe) {
-          $duplicadas++;
-          continue;
-        }
-
-        Transaction::create([
+        $resultado = $transactionImportService->importarTransacaoExterna([
           'id_categoria'    => $item['id_categoria'] ?? null,
           'descricao_banco' => $item['descricao_banco'] ?? '',
           'descricao'       => $item['descricao'] ?? '',
           'valor'           => $item['valor'] ?? 0,
           'data'            => $dataFatura ?? now(),
           'id_cartao'       => $item['id_cartao'] ?? null,
-          'id_caixa'        => $idCaixa,
           'tipo'            => $item['tipo'] ?? 'despesa',
           'id_cliente'      => $item['id_cliente'] ?? null,
-          'id_usuario'      => Auth::id(),
-          'id_workspace'    => $workspaceId,
-          'chave_banco'     => $chaveBanco,
-        ]);
+          'data_banco'      => $item['data_banco'] ?? '',
+          'chave_banco'     => $item['chave_banco'] ?? null,
+          'data_fatura'     => $dataFatura,
+        ], Auth::id(), $workspaceId, $idCaixa);
+
+        if ($resultado['status'] === 'duplicada') {
+          $duplicadas++;
+          continue;
+        }
+
         $count++;
       }
 
@@ -1408,34 +1392,25 @@ class TransactionsController extends Controller
           continue;
         }
 
-        // Usa a chave_banco que já foi calculada na preview
-        $chaveBancoFut = $pf['chave_banco'] ?? null;
-        
-        // Se não tiver chave, gera uma nova (fallback)
-        // Usa a data da parcela futura como mês de referência da fatura
-        if (!$chaveBancoFut) {
-          $dataBancoFut  = $pf['data_banco']     ?? '';
-          $descricaoFut  = $pf['descricao_banco'] ?? '';
-          $valorFut      = $pf['valor']           ?? 0;
-          $dataFaturaFut = $pf['data']            ?? $dataFatura;
-          $chaveBancoFut = Transaction::generateChaveBanco($dataBancoFut, $descricaoFut, $valorFut, $dataFaturaFut);
-        }
-
-        Transaction::create([
-
+        $resultado = $transactionImportService->importarTransacaoExterna([
           'id_categoria'    => $pf['id_categoria'] ?: null,
           'descricao_banco' => $pf['descricao_banco'] ?? '',
           'descricao'       => $pf['descricao'] ?? '',
           'valor'           => $pf['valor'] ?? 0,
           'data'            => $pf['data'] ?? now(),
           'id_cartao'       => $pf['id_cartao'] ?? null,
-          'id_caixa'        => $idCaixa,
           'tipo'            => $pf['tipo'] ?? 'despesa',
           'id_cliente'      => $pf['id_cliente'] ?? null,
-          'id_usuario'      => Auth::id(),
-          'id_workspace'    => $workspaceId,
-          'chave_banco'     => $chaveBancoFut,
-        ]);
+          'data_banco'      => $pf['data_banco'] ?? '',
+          'chave_banco'     => $pf['chave_banco'] ?? null,
+          'data_fatura'     => $pf['data'] ?? $dataFatura,
+        ], Auth::id(), $workspaceId, $idCaixa);
+
+        if ($resultado['status'] === 'duplicada') {
+          $duplicadas++;
+          continue;
+        }
+
         $parcelasCount++;
       }
     });

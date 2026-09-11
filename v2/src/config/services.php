@@ -30,4 +30,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'pluggy' => [
+        'client_id' => env('PLUGGY_CLIENT_ID'),
+        'client_secret' => env('PLUGGY_CLIENT_SECRET'),
+        'base_url' => env('PLUGGY_BASE_URL', 'https://api.pluggy.ai'),
+    ],
+
 ];
