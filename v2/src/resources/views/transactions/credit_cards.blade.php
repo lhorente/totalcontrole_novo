@@ -77,6 +77,8 @@
         $colors = ['bg-primary','bg-success','bg-danger','bg-warning','bg-info','bg-secondary'];
         $color = $colors[$loop->index % count($colors)];
         $wsColors = ['#4e73df','#1cc88a','#e74a3b','#f6c23e','#36b9cc'];
+        $hasChildren = count($item['children']) > 0;
+        $sync = $item['sync'];
       @endphp
       <div class="col-md-6 mb-3">
         <div class="card shadow-sm h-100">
@@ -86,8 +88,17 @@
                 {{ $initials }}
               </span>
               <div>
-                <strong>{{ $card->descricao }}</strong><br>
-                <small class="text-muted">{{ $card->nome_titular ?? Auth::user()->name }}</small>
+                <strong>{{ $card->descricao }}</strong>
+                @if ($hasChildren)
+                  <span class="badge badge-light border ml-1" style="font-size:.7rem">
+                    {{ count($item['children']) }} vinculado{{ count($item['children']) > 1 ? 's' : '' }}
+                  </span>
+                @endif
+                <br>
+                <small class="text-muted">
+                  {{ $card->nome_titular ?? Auth::user()->name }}
+                  @if ($card->ultimos_digitos) · final {{ $card->ultimos_digitos }} @endif
+                </small>
               </div>
             </div>
             @if ($item['pago'])
@@ -97,9 +108,30 @@
             @endif
           </div>
 
+          @if ($sync)
+          @php
+            $providerLabels = ['nubank' => 'Nubank', 'bradesco' => 'Bradesco'];
+            $providerLabel = $providerLabels[$sync->provider] ?? ucfirst($sync->provider);
+            $syncDate = $sync->last_sync_at ?? $sync->updated_at;
+            $syncDateFmt = $syncDate ? $syncDate->format('d/m') . ' às ' . $syncDate->format('H:i') : null;
+            $syncDot = $sync->status === 'ativo' ? '#1cc88a' : ($sync->status === 'mfa_pendente' ? '#f6c23e' : '#e74a3b');
+          @endphp
+          <div class="px-3 py-2 small d-flex align-items-center {{ $sync->status === 'ativo' ? 'text-muted' : ($sync->status === 'mfa_pendente' ? 'text-warning' : 'text-danger') }}"
+               style="border-bottom:1px solid #eee; {{ $sync->status !== 'ativo' ? 'background:#fff8f8' : '' }}">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;flex:none;background:{{ $syncDot }}"></span>
+            @if ($sync->status === 'ativo')
+              Sincronizado com {{ $providerLabel }} via Pluggy {{ $syncDateFmt ? 'em ' . $syncDateFmt : '' }}
+            @elseif ($sync->status === 'mfa_pendente')
+              Aguardando confirmação no app do {{ $providerLabel }} · Pluggy
+            @else
+              Falha ao sincronizar com {{ $providerLabel }} via Pluggy{{ $syncDateFmt ? ' · última tentativa em ' . $syncDateFmt : '' }}
+            @endif
+          </div>
+          @endif
+
           <div class="card-body py-2">
             <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="text-muted">Fatura atual</span>
+              <span class="text-muted">{{ $hasChildren ? 'Fatura consolidada' : 'Fatura atual' }}</span>
               <strong>R$ {{ number_format($item['fatura'], 0, ',', '.') }}</strong>
             </div>
 
@@ -141,16 +173,48 @@
                   {{ $ws->nome }}
                 @endforeach
                 deve R$ {{ number_format($item['em_aberto_empresa'], 0, ',', '.') }}
+                @if ($hasChildren) <span class="text-muted">(somado dos vinculados)</span> @endif
               </small>
             </div>
             @endif
           </div>
 
-          <div class="card-footer py-2 text-right">
-            <a href="{{ route('transactions.cardTransactions', ['cardId' => $card->id, 'year' => $year, 'month' => $month]) }}"
-               class="btn btn-sm btn-outline-secondary">
-              <i class="fa fa-chevron-down mr-1"></i> Ver lançamentos
-            </a>
+          <div class="card-footer py-2">
+            @if ($hasChildren)
+            <button type="button" class="btn btn-sm btn-link p-0 mb-2 text-decoration-none"
+                    data-toggle="collapse" data-target="#children-{{ $card->id }}"
+                    aria-expanded="false" aria-controls="children-{{ $card->id }}">
+              <i class="fa fa-chevron-right mr-1"></i> Ver cartões vinculados ({{ count($item['children']) }})
+            </button>
+            <div class="collapse" id="children-{{ $card->id }}">
+              <div class="list-group list-group-flush mb-2" style="font-size:.85rem">
+                @foreach ($item['children'] as $child)
+                @php $childCard = $child['card']; @endphp
+                <div class="list-group-item d-flex align-items-center justify-content-between px-0 py-2 {{ $child['fatura'] == 0 ? 'text-muted' : '' }}">
+                  <div class="d-flex align-items-center" style="min-width:0">
+                    <span class="badge bg-secondary mr-2" style="font-size:.65rem;min-width:26px">
+                      {{ strtoupper(substr($childCard->descricao, 0, 2)) }}
+                    </span>
+                    <span class="text-truncate" style="max-width:150px">{{ $childCard->descricao }}</span>
+                  </div>
+                  <div class="d-flex align-items-center">
+                    <strong class="mr-2">R$ {{ number_format($child['fatura'], 0, ',', '.') }}</strong>
+                    <a href="{{ route('transactions.cardTransactions', ['cardId' => $childCard->id, 'year' => $year, 'month' => $month]) }}" class="small">
+                      Ver →
+                    </a>
+                  </div>
+                </div>
+                @endforeach
+              </div>
+            </div>
+            @endif
+
+            <div class="text-right">
+              <a href="{{ route('transactions.cardTransactions', ['cardId' => $card->id, 'year' => $year, 'month' => $month]) }}"
+                 class="btn btn-sm btn-outline-secondary">
+                <i class="fa fa-chevron-down mr-1"></i> {{ $hasChildren ? 'Ver todos os lançamentos' : 'Ver lançamentos' }}
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -163,5 +227,18 @@
 
   </div>
 </div>
+
+@push('scripts')
+<script>
+  $(function () {
+    $('[id^="children-"].collapse').on('shown.bs.collapse hidden.bs.collapse', function () {
+      var expanded = $(this).hasClass('show');
+      $('[data-target="#' + this.id + '"] i')
+        .toggleClass('fa-chevron-down', expanded)
+        .toggleClass('fa-chevron-right', !expanded);
+    });
+  });
+</script>
+@endpush
 
 @endsection

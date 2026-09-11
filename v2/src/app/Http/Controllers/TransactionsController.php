@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\CreditCard;
+use App\Models\IntegracaoBancaria;
 use App\Models\Wallet;
 use App\Models\Workspace;
 use App\Models\TransactionMapping;
@@ -29,8 +30,33 @@ class TransactionsController extends Controller
     // Workspaces do usuário para o breakdown
     $workspaces = Auth::user()->workspaces()->where('workspaces.ativo', true)->orderBy('workspaces.nome')->get();
 
-    // Cartões do usuário
+    // Cartões do usuário (físicos e virtuais/adicionais juntos)
     $cards = CreditCard::where('id_usuario', Auth::id())->where('status', 'ativo')->orderBy('descricao')->get();
+    $cardsById = $cards->keyBy('id');
+    $childrenByParent = $cards->whereNotNull('id_cartao_pai')->groupBy('id_cartao_pai');
+
+    // Cartão de topo: sem pai, ou com pai que não está mais entre os cartões ativos (órfão)
+    $topLevelCards = $cards->filter(function ($card) use ($cardsById) {
+      return is_null($card->id_cartao_pai) || !$cardsById->has($card->id_cartao_pai);
+    })->sortBy('descricao');
+
+    // Todas as transações do mês de todos os cartões, de uma vez (ignora workspace scope — contexto do usuário)
+    $allCardIds = $cards->pluck('id')->all();
+    $transactionsByCard = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
+      ->where('id_usuario', Auth::id())
+      ->whereIn('id_cartao', $allCardIds)
+      ->whereYear('data', $year)
+      ->whereMonth('data', $month)
+      ->where('status', '!=', 'cancelado')
+      ->get()
+      ->groupBy('id_cartao');
+
+    // Última integração Pluggy de cada cartão de topo (quando aplicável)
+    $integrations = IntegracaoBancaria::whereIn('id_cartao', $allCardIds)
+      ->orderByDesc('last_sync_at')
+      ->get()
+      ->groupBy('id_cartao')
+      ->map(fn ($group) => $group->first());
 
     $cardData = [];
     $totals = ['geral' => 0];
@@ -39,55 +65,37 @@ class TransactionsController extends Controller
     }
     $totals['em_aberto_empresa'] = 0;
 
-    foreach ($cards as $card) {
-      // Todas as transações do mês desse cartão (ignora workspace scope — contexto do usuário)
-      $transactions = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
-        ->where('id_usuario', Auth::id())
-        ->where('id_cartao', $card->id)
-        ->whereYear('data', $year)
-        ->whereMonth('data', $month)
-        ->where('status', '!=', 'cancelado')
-        ->get();
+    foreach ($topLevelCards as $card) {
+      $children = $childrenByParent->get($card->id, collect());
+      $groupTransactions = $transactionsByCard->get($card->id, collect());
 
-      $fatura = $transactions->sum('valor');
+      $childData = [];
+      foreach ($children->sortBy('descricao') as $child) {
+        $childTransactions = $transactionsByCard->get($child->id, collect());
+        $groupTransactions = $groupTransactions->concat($childTransactions);
 
-      // Breakdown por workspace
-      $breakdown = [];
-      foreach ($workspaces as $ws) {
-        $breakdown[$ws->id] = [
-          'nome'  => $ws->nome,
-          'tipo'  => $ws->tipo,
-          'total' => $transactions->where('id_workspace', $ws->id)->sum('valor'),
-        ];
+        $childData[] = array_merge(
+          ['card' => $child],
+          $this->buildCardInvoiceStats($childTransactions, $workspaces)
+        );
       }
 
-      // Valor em aberto de workspaces do tipo empresa (sem data_pagamento)
-      $emAbertoEmpresa = 0;
+      $stats = $this->buildCardInvoiceStats($groupTransactions, $workspaces);
+
+      $cardData[] = array_merge(
+        [
+          'card'     => $card,
+          'children' => $childData,
+          'sync'     => $integrations->get($card->id),
+        ],
+        $stats
+      );
+
+      $totals['geral'] += $stats['fatura'];
       foreach ($workspaces as $ws) {
-        if ($ws->tipo === 'empresa') {
-          $emAbertoEmpresa += $transactions
-            ->where('id_workspace', $ws->id)
-            ->whereNull('data_pagamento')
-            ->sum('valor');
-        }
+        $totals[$ws->id] += $stats['breakdown'][$ws->id]['total'];
       }
-
-      $pago = $transactions->whereNotNull('data_pagamento')->count() > 0
-        && $transactions->whereNull('data_pagamento')->count() === 0;
-
-      $cardData[] = [
-        'card'            => $card,
-        'fatura'          => $fatura,
-        'breakdown'       => $breakdown,
-        'em_aberto_empresa' => $emAbertoEmpresa,
-        'pago'            => $pago,
-      ];
-
-      $totals['geral'] += $fatura;
-      foreach ($workspaces as $ws) {
-        $totals[$ws->id] += $breakdown[$ws->id]['total'];
-      }
-      $totals['em_aberto_empresa'] += $emAbertoEmpresa;
+      $totals['em_aberto_empresa'] += $stats['em_aberto_empresa'];
     }
 
     $currentDate = Carbon::create($year, $month, 1);
@@ -100,6 +108,44 @@ class TransactionsController extends Controller
     ));
   }
 
+  /**
+   * Fatura, breakdown por workspace, valor em aberto de workspaces "empresa" e status de
+   * pagamento para um conjunto de transações de um cartão (ou de um cartão + seus vinculados).
+   */
+  private function buildCardInvoiceStats($transactions, $workspaces)
+  {
+    $fatura = $transactions->sum('valor');
+
+    $breakdown = [];
+    foreach ($workspaces as $ws) {
+      $breakdown[$ws->id] = [
+        'nome'  => $ws->nome,
+        'tipo'  => $ws->tipo,
+        'total' => $transactions->where('id_workspace', $ws->id)->sum('valor'),
+      ];
+    }
+
+    $emAbertoEmpresa = 0;
+    foreach ($workspaces as $ws) {
+      if ($ws->tipo === 'empresa') {
+        $emAbertoEmpresa += $transactions
+          ->where('id_workspace', $ws->id)
+          ->whereNull('data_pagamento')
+          ->sum('valor');
+      }
+    }
+
+    $pago = $transactions->whereNotNull('data_pagamento')->count() > 0
+      && $transactions->whereNull('data_pagamento')->count() === 0;
+
+    return [
+      'fatura'            => $fatura,
+      'breakdown'         => $breakdown,
+      'em_aberto_empresa' => $emAbertoEmpresa,
+      'pago'              => $pago,
+    ];
+  }
+
   public function cardTransactions(Request $request, $cardId, $year = null, $month = null)
   {
     $year  = $year  ?? date('Y');
@@ -107,9 +153,13 @@ class TransactionsController extends Controller
 
     $card = CreditCard::where('id', $cardId)->where('id_usuario', Auth::id())->firstOrFail();
 
+    // Se for um cartão físico com vinculados (virtuais/adicionais), soma a fatura de todos eles
+    $childCardIds = CreditCard::where('id_cartao_pai', $cardId)->pluck('id')->toArray();
+    $cardIds = array_merge([(int) $cardId], $childCardIds);
+
     $transactions = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
       ->where('id_usuario', Auth::id())
-      ->where('id_cartao', $cardId)
+      ->whereIn('id_cartao', $cardIds)
       ->where('status', '!=', 'cancelado')
       ->whereYear('data', $year)
       ->whereMonth('data', $month)
