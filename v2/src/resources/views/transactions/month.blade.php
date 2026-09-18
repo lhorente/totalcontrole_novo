@@ -285,6 +285,7 @@
                       data-id-workspace="{{ $transaction->id_workspace }}"
                       data-descricao-banco="{{ $transaction->descricao_banco ?: '' }}"
                       data-chave-banco="{{ $transaction->chave_banco ?: '' }}"
+                      data-origem="{{ $transaction->origem ?: '' }}"
                       data-sort-data="{{ $transaction->data->format('Y-m-d') }}"
                       data-sort-descricao="{{ $transaction->descricao ?: $transaction->descricao_banco }}"
                       data-sort-categoria="{{ optional($transaction->category)->nome ?? '' }}"
@@ -398,7 +399,8 @@
              data-id-cliente="{{ $transaction->id_cliente ?? '' }}"
              data-data-pagamento="{{ $transaction->data_pagamento ? \Carbon\Carbon::parse($transaction->data_pagamento)->format('Y-m-d') : '' }}"
              data-data-recebimento="{{ $transaction->data_recebimento ? \Carbon\Carbon::parse($transaction->data_recebimento)->format('Y-m-d') : '' }}"
-             data-id-workspace="{{ $transaction->id_workspace }}">
+             data-id-workspace="{{ $transaction->id_workspace }}"
+             data-origem="{{ $transaction->origem ?: '' }}">
             <span class="info-box-icon {{ $transaction->data_pagamento ? 'bg-secondary' : ($transaction->tipo === 'receita' ? 'bg-success' : 'bg-danger') }}">
               @if ($transaction->category)
               <i class="{{ $transaction->category->icon_class }}"></i>
@@ -526,7 +528,27 @@ function metOpenModal(el) {
   document.getElementById('met-data-pagamento').value = dataPgto;
   document.getElementById('met-marcar-pago').checked  = dataPgto !== '';
 
+  var origemLine = document.getElementById('met-origem-line');
+  if (d.origem) {
+    document.getElementById('met-origem-text').textContent = metFmtOrigem(d.origem);
+    origemLine.style.display = '';
+  } else {
+    origemLine.style.display = 'none';
+  }
+
   $('#modal-edit-transaction').modal('show');
+}
+
+function metFmtOrigem(origem) {
+  var providerLabels = { nubank: 'Nubank', bradesco: 'Bradesco' };
+  if (origem.indexOf('pluggy_') === 0) {
+    var provider = origem.replace('pluggy_', '');
+    return 'Importado automaticamente via Pluggy (' + (providerLabels[provider] || provider) + ')';
+  }
+  if (origem === 'smartpos') {
+    return 'Importado via Smartpos';
+  }
+  return 'Origem: ' + origem;
 }
 
 function metFmtDate(ymd) {

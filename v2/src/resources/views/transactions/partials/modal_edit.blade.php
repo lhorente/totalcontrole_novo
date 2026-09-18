@@ -125,6 +125,11 @@
             </div>
           </div>
 
+          {{-- Origem da importação (só aparece se preenchida) --}}
+          <p class="met-helper-text" id="met-origem-line" style="display:none">
+            <i class="fas fa-sync-alt mr-1"></i><span id="met-origem-text"></span>
+          </p>
+
         </div>{{-- /.met-body --}}
 
         {{-- Footer --}}
