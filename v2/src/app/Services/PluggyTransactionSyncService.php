@@ -123,22 +123,28 @@ class PluggyTransactionSyncService
     // parâmetro justamente para funcionar fora de um request HTTP.
     $mapeamento = TransactionMapping::matchFor($descricaoBanco, $integracao->id_workspace);
 
-    $dataTransacao = Carbon::parse($transacaoPluggy['date']);
-    $billForecastDate = $transacaoPluggy['creditCardMetadata']['billForecastDate'] ?? null;
-    $dataFatura = $billForecastDate ?? $dataTransacao->format('Y-m-d');
+    $idCartao = $this->resolverCartao($transacaoPluggy, $integracao);
+    $cartao   = CreditCard::find($idCartao);
 
-    // `data` precisa cair no mês/ano da fatura (billForecastDate), não no mês da
-    // compra em si -- a Pluggy já calcula isso considerando o fechamento real do
-    // banco, não precisa recalcular aqui. Mantém o dia da compra (só troca
-    // mês/ano) pra não empilhar todo mundo no dia 1 e perder a ordenação dentro
-    // da fatura; usa min() pra não estourar o fim de mês (ex.: compra dia 31
-    // caindo numa fatura de fevereiro).
-    if ($billForecastDate) {
+    $dataTransacao    = Carbon::parse($transacaoPluggy['date']);
+    $billForecastDate = $transacaoPluggy['creditCardMetadata']['billForecastDate'] ?? null;
+
+    // O `billForecastDate` da Pluggy não é confiável pra todo banco -- no
+    // Bradesco ele não reflete o fechamento real (compra ainda dentro do
+    // fechamento sendo reportada no mês errado). Com o dia de fechamento
+    // (e vencimento, pra saber se a fatura leva o nome do mês do fechamento
+    // ou do mês seguinte) cadastrados no cartão, calculamos isso localmente
+    // em vez de confiar na Pluggy -- ver CreditCard::calcularDataFatura().
+    // Sem o cadastro (cartão ainda não configurado), cai no billForecastDate
+    // como antes, e na falta dele, na data crua da compra.
+    if ($cartao && $cartao->dia_fechamento) {
+      $dataCalculada = $cartao->calcularDataFatura($dataTransacao);
+    } elseif ($billForecastDate) {
       [$anoFatura, $mesFatura] = explode('-', $billForecastDate);
       $ultimoDiaFatura = Carbon::create((int) $anoFatura, (int) $mesFatura, 1)->daysInMonth;
-      $data = Carbon::create((int) $anoFatura, (int) $mesFatura, min($dataTransacao->day, $ultimoDiaFatura))->format('Y-m-d');
+      $dataCalculada = Carbon::create((int) $anoFatura, (int) $mesFatura, min($dataTransacao->day, $ultimoDiaFatura));
     } else {
-      $data = $dataTransacao->format('Y-m-d');
+      $dataCalculada = $dataTransacao->copy();
     }
 
     return [
@@ -146,10 +152,10 @@ class PluggyTransactionSyncService
       'descricao_banco' => $descricaoBanco,
       'descricao'       => $mapeamento?->descricao_local ?? $descricaoBanco,
       'valor'           => (float) ($transacaoPluggy['amount'] ?? 0),
-      'data'            => $data,
+      'data'            => $dataCalculada->format('Y-m-d'),
       'data_banco'      => $transacaoPluggy['date'] ?? '',
-      'data_fatura'     => $dataFatura,
-      'id_cartao'       => $this->resolverCartao($transacaoPluggy, $integracao),
+      'data_fatura'     => $dataCalculada->copy()->startOfMonth()->format('Y-m-d'),
+      'id_cartao'       => $idCartao,
       'tipo'            => 'despesa',
       'origem'          => 'pluggy_' . $integracao->provider,
       'id_externo'      => $transacaoPluggy['id'],

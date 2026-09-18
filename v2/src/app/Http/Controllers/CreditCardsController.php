@@ -52,6 +52,7 @@ class CreditCardsController extends Controller
 
     $credit_card->descricao = $request->input('descricao');
     $credit_card->dia_vencimento = $request->input('dia_vencimento');
+    $credit_card->dia_fechamento = $request->input('dia_fechamento') ?: null;
     $credit_card->id_cartao_pai = $request->input('id_cartao_pai') ?: null;
     $credit_card->ultimos_digitos = $request->input('ultimos_digitos') ?: null;
     $credit_card->id_categoria_padrao = $request->input('id_categoria_padrao') ?: null;

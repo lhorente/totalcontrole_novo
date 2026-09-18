@@ -44,6 +44,12 @@
                   </div>
 
                   <div class="form-group">
+                    <label>Dia de fechamento</label>
+                    <input type="text" name="dia_fechamento" class="form-control" placeholder="Dia de fechamento da fatura. Valores permitidos de 1 a 31." value="{{ $credit_card->dia_fechamento }}">
+                    <small class="form-text text-muted">Usado para calcular em qual fatura uma compra sincronizada automaticamente (Pluggy) vai cair. Opcional.</small>
+                  </div>
+
+                  <div class="form-group">
                     <label>Cartão pai</label>
                     <select name="id_cartao_pai" class="form-control">
                       <option value="">Nenhum (é um cartão físico)</option>

@@ -29,6 +29,7 @@ class StoreCreditCard extends FormRequest
         return [
           'descricao' => 'required|max:255',
           'dia_vencimento' => 'required|numeric|between:1,31',
+          'dia_fechamento' => 'nullable|numeric|between:1,31',
           'id_cartao_pai' => [
             'nullable',
             Rule::exists('cartoes', 'id')->where(function ($query) {
@@ -59,6 +60,7 @@ class StoreCreditCard extends FormRequest
             'descricao.max' => 'O campo descrição precisa ter no máximo 255 caracteres',
             'dia_vencimento.required' => 'O campo dia de vencimento é obrigatório',
             'dia_vencimento.between' => 'Dia de vencimento inválido',
+            'dia_fechamento.between' => 'Dia de fechamento inválido',
             'id_cartao_pai.exists' => 'Cartão pai inválido',
             'ultimos_digitos.digits' => 'Os últimos dígitos devem ter exatamente 4 números',
             'id_categoria_padrao.exists' => 'Categoria padrão inválida',

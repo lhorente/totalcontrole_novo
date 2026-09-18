@@ -33,6 +33,7 @@
                   <th style="width: 10px">#</th>
                   <th>Nome</th>
                   <th>Vencimento</th>
+                  <th>Fechamento</th>
                   <th>Últimos dígitos</th>
                 </tr>
               </thead>
@@ -45,6 +46,7 @@
                     <a href="{{ url('/credit_cards/edit/') }}/<?php echo $credit_card->id ?>"><?php echo $credit_card->descricao ?></a>
                   </td>
                   <td><?php echo $credit_card->dia_vencimento ?></td>
+                  <td><?php echo $credit_card->dia_fechamento ?></td>
                   <td></td>
                 </tr>
                 <?php foreach ($credit_cards->where('id_cartao_pai', $credit_card->id) as $subcard){ ?>
@@ -54,6 +56,7 @@
                     &#8627; <a href="{{ url('/credit_cards/edit/') }}/<?php echo $subcard->id ?>"><?php echo $subcard->descricao ?></a>
                   </td>
                   <td><?php echo $subcard->dia_vencimento ?></td>
+                  <td><?php echo $subcard->dia_fechamento ?></td>
                   <td><?php echo $subcard->ultimos_digitos ?></td>
                 </tr>
                 <?php } ?>
