@@ -86,7 +86,16 @@ class PluggyTransactionSyncService
 
         $resultado[$resultadoImportacao['status'] === 'criada' ? 'criadas' : 'duplicadas']++;
 
+        // Parcelas futuras vêm da Pluggy com `date` já projetado para o mês da
+        // parcela (ex.: compra em 12/09 parcelada em 2x pode trazer a 2ª
+        // parcela com date=12/10) -- bem diferente de creditCardMetadata.purchaseDate,
+        // que é a data real da compra. Se essa data futura virasse o novo
+        // last_sync_at, o próximo `dateFrom` pularia semanas de transações
+        // reais ainda não sincronizadas. Por isso ela nunca conta para o watermark.
         $dataTransacao = Carbon::parse($transacaoPluggy['date']);
+        if ($dataTransacao->isFuture()) {
+          continue;
+        }
         if (!$ultimaDataProcessada || $dataTransacao->gt($ultimaDataProcessada)) {
           $ultimaDataProcessada = $dataTransacao;
         }
