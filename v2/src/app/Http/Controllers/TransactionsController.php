@@ -157,12 +157,16 @@ class TransactionsController extends Controller
     $childCardIds = CreditCard::where('id_cartao_pai', $cardId)->pluck('id')->toArray();
     $cardIds = array_merge([(int) $cardId], $childCardIds);
 
+    $id_categoria = $request->input('categoria');
+    $semCategoria = $id_categoria === Transaction::FILTER_SEM_CATEGORIA;
+
     $transactions = Transaction::withoutGlobalScope(\App\Models\Scopes\CurrentUserScope::class)
       ->where('id_usuario', Auth::id())
       ->whereIn('id_cartao', $cardIds)
       ->where('status', '!=', 'cancelado')
       ->whereYear('data', $year)
       ->whereMonth('data', $month)
+      ->when($semCategoria, fn($q) => $q->whereNull('id_categoria'))
       ->with(['category', 'contact', 'wallet', 'credit_card', 'workspace'])
       ->orderBy('data_pagamento', 'asc')
       ->orderBy('data', 'asc')
@@ -214,7 +218,7 @@ class TransactionsController extends Controller
                      ->get();
 
     $type      = null;
-    $categoria = null;
+    $categoria = ($id_categoria && !$semCategoria) ? Category::find($id_categoria) : null;
     $cartao    = $card;
     $pessoa    = null;
     $caixa     = null;
@@ -231,6 +235,7 @@ class TransactionsController extends Controller
       'month',
       'type',
       'categoria',
+      'semCategoria',
       'categorias',
       'cartao',
       'cartoes',
@@ -309,7 +314,8 @@ class TransactionsController extends Controller
     $id_caixa = $request->input('caixa');
 
     // Load selected filter objects
-    $categoria = $id_categoria ? Category::find($id_categoria) : null;
+    $semCategoria = $id_categoria === Transaction::FILTER_SEM_CATEGORIA;
+    $categoria = ($id_categoria && !$semCategoria) ? Category::find($id_categoria) : null;
     $cartao    = $id_cartao   ? CreditCard::find($id_cartao)  : null;
     $pessoa    = $id_pessoa   ? Contact::find($id_pessoa)     : null;
     $caixa     = $id_caixa   ? Wallet::where('id', $id_caixa)->where('id_usuario', Auth::id())->first() : null;
@@ -391,6 +397,7 @@ class TransactionsController extends Controller
       'month',
       'type',
       'categoria',
+      'semCategoria',
       'categorias',
       'cartao',
       'cartoes',

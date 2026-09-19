@@ -1,5 +1,5 @@
 {{-- Active filter badges --}}
-@if ($categoria || $cartao || $pessoa || $caixa || $type)
+@if ($categoria || !empty($semCategoria) || $cartao || $pessoa || $caixa || $type)
 @php
   $meses = [1=>'Jan',2=>'Fev',3=>'Mar',4=>'Abr',5=>'Mai',6=>'Jun',7=>'Jul',8=>'Ago',9=>'Set',10=>'Out',11=>'Nov',12=>'Dez'];
   $baseParams = ['year' => $year, 'month' => $month];
@@ -21,6 +21,11 @@
       <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['categoria' => '']))) }}"
          class="badge badge-warning" title="Remover filtro de categoria">
         Cat: {{ $categoria->nome }} &times;
+      </a>
+    @elseif (!empty($semCategoria))
+      <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['categoria' => '']))) }}"
+         class="badge badge-warning" title="Remover filtro de categoria">
+        Cat: Sem categoria &times;
       </a>
     @endif
     @if ($cartao)
@@ -269,12 +274,10 @@
             <td class="text-center text-muted">{{ $group->count() }}</td>
             <td class="text-right font-weight-bold">R$ {{ number_format($catTotal, 2, ',', '.') }}</td>
             <td class="text-right">
-              @if ($idCat)
-              <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['t','cartao','pessoa','caixa'])), ['categoria' => $idCat])) }}"
+              <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['t','cartao','pessoa','caixa'])), ['categoria' => $idCat ?: 'sem_categoria'])) }}"
                  class="btn btn-xs btn-outline-secondary" title="Filtrar por categoria">
                 <i class="fa fa-search fa-xs"></i>
               </a>
-              @endif
             </td>
           </tr>
           @endforeach

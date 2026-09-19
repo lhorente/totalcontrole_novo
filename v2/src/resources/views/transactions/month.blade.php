@@ -95,6 +95,7 @@
                     <label>Categoria</label>
                     <select class="form-control" name="categoria">
                       <option value="">Todas</option>
+                      <option value="sem_categoria" @if(!empty($semCategoria)) selected @endif>Sem categoria</option>
                       @foreach ($categorias as $cat)
                         <option value="{{ $cat->id }}" @if($categoria && $categoria->id == $cat->id) selected @endif>{{ $cat->nome }}</option>
                       @endforeach

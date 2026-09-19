@@ -17,6 +17,8 @@ class Transaction extends Model
 
   public $table = 'transacoes';
 
+  const FILTER_SEM_CATEGORIA = 'sem_categoria';
+
   protected $fillable = [
     'id_categoria',
     'id_cliente',
@@ -194,8 +196,10 @@ class Transaction extends Model
       $query->whereMonth('data', $month);
     }
 
-    // Category filter: include subcategories
-    if ($id_categoria) {
+    // Category filter: include subcategories, or "sem categoria" (no category assigned)
+    if ($id_categoria === self::FILTER_SEM_CATEGORIA) {
+      $query->whereNull('id_categoria');
+    } elseif ($id_categoria) {
       $subcategoryIds = Category::where('parent_id', $id_categoria)->pluck('id')->toArray();
       $categoryIds = array_merge([$id_categoria], $subcategoryIds);
       $query->whereIn('id_categoria', $categoryIds);

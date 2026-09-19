@@ -15,7 +15,7 @@
 @endphp
 
 {{-- Active filter badges --}}
-@if ($categoria || $cartao || $pessoa || $caixa || $type)
+@if ($categoria || !empty($semCategoria) || $cartao || $pessoa || $caixa || $type)
 @php
   $meses = [1=>'Jan',2=>'Fev',3=>'Mar',4=>'Abr',5=>'Mai',6=>'Jun',7=>'Jul',8=>'Ago',9=>'Set',10=>'Out',11=>'Nov',12=>'Dez'];
   $baseParams = ['year' => $year, 'month' => $month];
@@ -35,6 +35,11 @@
       <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['categoria' => '']))) }}"
          class="badge badge-warning" title="Remover filtro de categoria">
         Cat: {{ $categoria->nome }} &times;
+      </a>
+    @elseif (!empty($semCategoria))
+      <a href="{{ route('transactions.month', array_merge($baseParams, array_diff_key($activeQuery, ['categoria' => '']))) }}"
+         class="badge badge-warning" title="Remover filtro de categoria">
+        Cat: Sem categoria &times;
       </a>
     @endif
     @if ($cartao)
@@ -80,7 +85,7 @@
               $catTotal = $group->sum('valor');
             @endphp
             <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:.9rem">
-              <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['cartao','pessoa','caixa'])), ['t' => 'lucro', 'categoria' => $idCat])) }}"
+              <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['cartao','pessoa','caixa'])), ['t' => 'lucro', 'categoria' => $idCat ?: 'sem_categoria'])) }}"
                  class="text-dark text-decoration-none">
                 {{ $catNome }}
               </a>
@@ -110,7 +115,7 @@
               $catTotal = $group->sum('valor');
             @endphp
             <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:.9rem">
-              <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['cartao','pessoa','caixa'])), ['t' => 'despesa', 'categoria' => $idCat])) }}"
+              <a href="{{ route('transactions.month', array_merge([$year, $month], array_filter(request()->only(['cartao','pessoa','caixa'])), ['t' => 'despesa', 'categoria' => $idCat ?: 'sem_categoria'])) }}"
                  class="text-dark text-decoration-none">
                 {{ $catNome }}
               </a>

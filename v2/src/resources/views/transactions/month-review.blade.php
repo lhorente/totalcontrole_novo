@@ -163,12 +163,10 @@
                 </span>
                 <span class="d-flex align-items-center" style="gap:8px;">
                   <strong>R$ {{ number_format($catTotal, 2, ',', '.') }}</strong>
-                  @if ($idCategoria)
-                    <a href="{{ route('transactions.month', [$year, $month, 'categoria' => $idCategoria]) }}"
-                       class="mr-row-btn" title="Ver lançamentos de {{ $catNome }}">
-                      <i class="fa fa-search fa-xs"></i>
-                    </a>
-                  @endif
+                  <a href="{{ route('transactions.month', [$year, $month, 'categoria' => $idCategoria ?: 'sem_categoria']) }}"
+                     class="mr-row-btn" title="Ver lançamentos de {{ $catNome }}">
+                    <i class="fa fa-search fa-xs"></i>
+                  </a>
                 </span>
               </div>
             </div>
