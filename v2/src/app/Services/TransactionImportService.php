@@ -17,7 +17,9 @@ class TransactionImportService
    * $dados espera as mesmas chaves que hoje alimentam Transaction::create() no
    * import por IA (id_categoria, descricao_banco, descricao, valor, data,
    * id_cartao, tipo, id_cliente, data_banco, chave_banco, data_fatura), mais
-   * origem/id_externo quando a fonte tiver um identificador estável (Pluggy).
+   * origem/id_externo quando a fonte tiver um identificador estável (Pluggy),
+   * e data_compra/ultimos_digitos_cartao quando a fonte souber a data real da
+   * compra e o cartão específico usado (Pluggy manda os dois).
    *
    * $dryRun faz tudo (inclusive as duas checagens de duplicidade) menos o
    * INSERT final -- necessário porque `transacoes` é MyISAM (herdada do v1) e
@@ -72,7 +74,9 @@ class TransactionImportService
       'descricao'       => $dados['descricao'] ?? '',
       'valor'           => $dados['valor'] ?? 0,
       'data'            => $dados['data'] ?? now(),
+      'data_compra'     => $dados['data_compra'] ?? null,
       'id_cartao'       => $dados['id_cartao'] ?? null,
+      'ultimos_digitos_cartao' => $dados['ultimos_digitos_cartao'] ?? null,
       'id_caixa'        => $idCaixa,
       'tipo'            => $dados['tipo'] ?? 'despesa',
       'id_cliente'      => $dados['id_cliente'] ?? null,

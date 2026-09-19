@@ -28,6 +28,7 @@ class Transaction extends Model
     'descricao_banco',
     'valor',
     'data',
+    'data_compra',
     'data_pagamento',
     'data_recebimento',
     'tipo',
@@ -36,13 +37,15 @@ class Transaction extends Model
     'origem',
     'id_externo',
     'id_workspace',
+    'ultimos_digitos_cartao',
   ];
 
   protected $dates = [
     'created_at',
     'updated_at',
     'deleted_at',
-    'data'
+    'data',
+    'data_compra',
   ];
 
   protected static function booted()

@@ -153,9 +153,17 @@ class PluggyTransactionSyncService
       'descricao'       => $mapeamento?->descricao_local ?? $descricaoBanco,
       'valor'           => (float) ($transacaoPluggy['amount'] ?? 0),
       'data'            => $dataCalculada->format('Y-m-d'),
+      // `data` é a data da fatura (calculada acima); `data_compra` preserva a
+      // data real em que a compra aconteceu, reportada crua pela Pluggy --
+      // sem isso não dá pra saber depois quando o dinheiro de fato saiu.
+      'data_compra'     => $dataTransacao->format('Y-m-d'),
       'data_banco'      => $transacaoPluggy['date'] ?? '',
       'data_fatura'     => $dataCalculada->copy()->startOfMonth()->format('Y-m-d'),
       'id_cartao'       => $idCartao,
+      // Guardado por linha (não só resolvido pra achar o id_cartao) porque é
+      // a evidência crua que permite reprocessar/corrigir a associação depois
+      // -- ver BackfillPluggyCardInfo, criado exatamente pra isso.
+      'ultimos_digitos_cartao' => $transacaoPluggy['creditCardMetadata']['cardNumber'] ?? null,
       'tipo'            => 'despesa',
       'origem'          => 'pluggy_' . $integracao->provider,
       'id_externo'      => $transacaoPluggy['id'],
@@ -167,8 +175,11 @@ class PluggyTransactionSyncService
    * (creditCardMetadata.cardNumber), mesmo padrão já usado no import CSV
    * (CsvParserService::toPreviewArray -- coluna "ultimos_digitos"). Sem
    * subcartão cadastrado com esses dígitos, cai no cartão físico da integração.
+   * Público pra ser reaproveitado pelo BackfillPluggyCardInfo, que precisa
+   * reavaliar a associação de transações já importadas antes de o subcartão
+   * certo existir no sistema.
    */
-  private function resolverCartao(array $transacaoPluggy, IntegracaoBancaria $integracao): ?int
+  public function resolverCartao(array $transacaoPluggy, IntegracaoBancaria $integracao): ?int
   {
     $ultimosDigitos = $transacaoPluggy['creditCardMetadata']['cardNumber'] ?? null;
 
