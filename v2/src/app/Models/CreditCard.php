@@ -43,14 +43,18 @@ class CreditCard extends Model
   }
 
   /**
-   * Calcula em qual fatura (mês) uma compra feita em $dataCompra vai cair,
-   * a partir do dia de fechamento e do dia de vencimento cadastrados no
-   * cartão -- não dá pra assumir que a fatura sempre leva o nome do mês do
-   * fechamento: quando o vencimento cai no mês seguinte ao fechamento (ex.:
-   * fecha dia 28, vence dia 5 do mês seguinte), a fatura também leva o nome
-   * do mês seguinte. Só o dia de fechamento sozinho reproduz certo o caso da
-   * Nubank (fecha e vence dia 4, mesmo mês) mas erra o do Bradesco (fecha
-   * dia 28, vence só no mês seguinte).
+   * Calcula em qual fatura uma compra feita em $dataCompra vai cair, a partir
+   * do dia de fechamento e do dia de vencimento cadastrados no cartão -- não
+   * dá pra assumir que a fatura sempre leva o nome do mês do fechamento:
+   * quando o vencimento cai no mês seguinte ao fechamento (ex.: fecha dia 28,
+   * vence dia 5 do mês seguinte), a fatura também leva o nome do mês
+   * seguinte. Só o dia de fechamento sozinho reproduz certo o caso da Nubank
+   * (fecha e vence dia 4, mesmo mês) mas erra o do Bradesco (fecha dia 28,
+   * vence só no mês seguinte).
+   *
+   * A data retornada usa sempre o dia de vencimento (não o dia da compra) --
+   * é a data que a fatura de fato vence, independente de em que dia dentro
+   * do ciclo a compra caiu.
    */
   public function calcularDataFatura(\Carbon\Carbon $dataCompra): \Carbon\Carbon
   {
@@ -67,6 +71,6 @@ class CreditCard extends Model
       $fatura->addMonthNoOverflow();
     }
 
-    return $fatura->day(min($dataCompra->day, $fatura->daysInMonth));
+    return $fatura->day(min($diaVencimento, $fatura->daysInMonth));
   }
 }
