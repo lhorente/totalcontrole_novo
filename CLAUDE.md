@@ -13,13 +13,15 @@ Everything below (commands, architecture) refers to `v2/src` unless stated other
 
 ## Running the app (Docker)
 
-The project runs via `docker-compose.yml` at the repo root, which starts three services: `totalcontrole_db` (MySQL 5.7, host port 3310), `total_controle_v1` (port 8091), `total_controle_v2` (port 8092).
+The project runs via `docker-compose.yml` at the repo root, which starts `totalcontrole_db` (MySQL 5.7, host port 3310) and `total_controle_v2` (port 8092). `total_controle_v1` (port 8091, legacy, being phased out) is opt-in behind the `v1` Compose profile — it only starts when `COMPOSE_PROFILES=v1` is set in `.env` (or via `docker compose --profile v1 up`). Ports above are the `.env` defaults (`DB_HOST_PORT`/`V1_HTTP_PORT`/`V2_HTTP_PORT`) — each environment (prod/QA) sets its own via `.env` (see `.env.example`), along with its own `COMPOSE_PROJECT_NAME` to keep containers, network, volume and image tag from colliding across environments on the same host.
 
 ```bash
-docker compose up -d --build          # start everything
-docker compose exec total_controle_v2 bash   # shell into the v2 container
-docker compose logs -f total_controle_v2      # tail v2 logs
+docker compose up -d --build                            # start everything
+docker compose exec -u www-data total_controle_v2 bash   # shell into the v2 container (as www-data)
+docker compose logs -f total_controle_v2                 # tail v2 logs
 ```
+
+Always pass `-u www-data` to `docker compose exec` for anything that may write to `storage/` (artisan commands especially). Without it, the command runs as `root` by default in this image; any file it leaves behind under `storage/framework/` (compiled views, file cache) ends up `root`-owned, and Apache (running as `www-data`) then gets `Permission denied` writing that same cache key on a later request. Use `-u root` explicitly only for genuine admin tasks (e.g. `chown`).
 
 `vendor/` and compiled front-end assets (`public/js`, `public/css`) are committed, so `composer install`/`npm install` are only needed when changing dependencies or recompiling assets.
 
@@ -48,7 +50,7 @@ npm run watch
 npm run production   # production build
 ```
 
-Prefix any of the above with `docker compose exec total_controle_v2` when running from the host.
+Prefix any of the above with `docker compose exec -u www-data total_controle_v2` when running from the host.
 
 ## Architecture
 

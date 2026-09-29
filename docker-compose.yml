@@ -1,7 +1,6 @@
 services:
   totalcontrole_db:
     image: mysql:5.7
-    container_name: totalcontrole_db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -9,7 +8,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3310:3306"
+      - "127.0.0.1:${DB_HOST_PORT:-3310}:3306"
     volumes:
       - totalcontrole_db_data:/var/lib/mysql
     networks:
@@ -21,12 +20,16 @@ services:
       retries: 10
       start_period: 20s
 
+  # Opcional -- só sobe se o profile "v1" estiver ativo
+  # (COMPOSE_PROFILES=v1 no .env, ou `docker compose --profile v1 up`).
+  # v1 está para ser descontinuado; deixar de fora do QA e, no futuro,
+  # de produção, é só não ativar esse profile.
   total_controle_v1:
+    profiles: ["v1"]
     build:
       context: ./v1
-    container_name: total_controle_v1
     ports:
-      - "8091:80"
+      - "127.0.0.1:${V1_HTTP_PORT:-8091}:80"
     volumes:
       - ./v1/src:/var/www/html
     depends_on:
@@ -43,10 +46,9 @@ services:
   total_controle_v2:
     build:
       context: ./v2
-    image: totalcontrole_v2:latest
-    container_name: total_controle_v2
+    image: totalcontrole_v2:${COMPOSE_PROJECT_NAME:-totalcontrole}
     ports:
-      - "8092:80"
+      - "127.0.0.1:${V2_HTTP_PORT:-8092}:80"
     volumes:
       - ./v2/src:/var/www/html
     depends_on:
@@ -67,8 +69,7 @@ services:
   # rodando `php artisan schedule:run` a cada minuto, sem depender de cron
   # instalado no container nem no host.
   total_controle_v2_scheduler:
-    image: totalcontrole_v2:latest
-    container_name: total_controle_v2_scheduler
+    image: totalcontrole_v2:${COMPOSE_PROJECT_NAME:-totalcontrole}
     volumes:
       - ./v2/src:/var/www/html
     depends_on:
@@ -85,6 +86,9 @@ services:
       - totalcontrole-net
     entrypoint: ["sh", "-c", "while true; do php artisan schedule:run --no-interaction; sleep 60; done"]
 
+# Rede e volume não têm "name:" fixo, então o Compose os prefixa com
+# COMPOSE_PROJECT_NAME automaticamente -- ambientes com project name
+# diferente (ex.: prod vs qa) nunca compartilham rede nem volume de dados.
 networks:
   totalcontrole-net:
     driver: bridge
