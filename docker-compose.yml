@@ -8,7 +8,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "${DB_HOST_PORT:-3310}:3306"
+      - "127.0.0.1:${DB_HOST_PORT:-3310}:3306"
     volumes:
       - totalcontrole_db_data:/var/lib/mysql
     networks:
@@ -29,7 +29,7 @@ services:
     build:
       context: ./v1
     ports:
-      - "${V1_HTTP_PORT:-8091}:80"
+      - "127.0.0.1:${V1_HTTP_PORT:-8091}:80"
     volumes:
       - ./v1/src:/var/www/html
     depends_on:
@@ -48,7 +48,7 @@ services:
       context: ./v2
     image: totalcontrole_v2:${COMPOSE_PROJECT_NAME:-totalcontrole}
     ports:
-      - "${V2_HTTP_PORT:-8092}:80"
+      - "127.0.0.1:${V2_HTTP_PORT:-8092}:80"
     volumes:
       - ./v2/src:/var/www/html
     depends_on:
