@@ -174,6 +174,29 @@ class Transaction extends Model
     return $lendings;
   }
 
+  /**
+   * Nome de exibição do estabelecimento de uma transação: o apelido local
+   * (descricao) ou, na falta dele, a descrição do banco, sem o marcador de
+   * parcela ("03/10") para que todas as parcelas caiam no mesmo lugar.
+   */
+  public static function estabelecimentoNome(?string $descricao, ?string $descricaoBanco = null): string
+  {
+    $nome = trim((string) ($descricao ?: $descricaoBanco));
+    $nome = preg_replace('/\s*\b(PARC(ELA)?\.?\s*)?\d{1,3}\/\d{1,3}\b\s*/i', ' ', $nome);
+    $nome = trim(preg_replace('/\s+/', ' ', $nome ?? ''));
+
+    return $nome !== '' ? $nome : 'Sem descrição';
+  }
+
+  /**
+   * Chave de agrupamento por estabelecimento (mesma normalização do De <> Para:
+   * maiúsculas, sem acentos, espaços colapsados).
+   */
+  public static function estabelecimentoKey(?string $descricao, ?string $descricaoBanco = null): string
+  {
+    return TransactionMapping::normalize(self::estabelecimentoNome($descricao, $descricaoBanco));
+  }
+
   static function search($filters, $orders = []){
     $query = (new Transaction())->newQuery();
 
@@ -184,6 +207,7 @@ class Transaction extends Model
     $id_pessoa   = $filters['id_pessoa']    ?? null;
     $id_caixa    = $filters['id_caixa']     ?? null;
     $tipo        = $filters['tipo']         ?? null;
+    $estabelecimento = $filters['estabelecimento'] ?? null;
 
     // Always exclude cancelled transactions
     $query->where('status', '!=', 'cancelado');
@@ -237,7 +261,15 @@ class Transaction extends Model
       $query->orderBy('data_pagamento')->orderBy('data');
     }
 
-    return $query->get();
+    $result = $query->get();
+
+    // Estabelecimento: comparado pela chave normalizada (sem acento/parcela), por isso filtrado em memória
+    if ($estabelecimento) {
+      $busca = TransactionMapping::normalize($estabelecimento);
+      $result = $result->filter(fn ($t) => str_contains(self::estabelecimentoKey($t->descricao, $t->descricao_banco), $busca))->values();
+    }
+
+    return $result;
   }
 
   /**

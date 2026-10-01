@@ -44,12 +44,13 @@
 
       {{-- Filter card --}}
       <div class="col-md-12">
-        <div class="card collapsed-card">
+        {{-- Filtro por estabelecimento vem de link (ex.: Nosso Mês) e não aparece em outro lugar: abre o card para ficar visível --}}
+        <div class="card {{ !empty($estabelecimento) ? '' : 'collapsed-card' }}">
           <div class="card-header">
             <h3 class="card-title"><i class="fa fa-filter"></i> Filtros</h3>
             <div class="card-tools">
               <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                <i class="fas fa-plus"></i>
+                <i class="fas {{ !empty($estabelecimento) ? 'fa-minus' : 'fa-plus' }}"></i>
               </button>
             </div>
           </div>
@@ -82,6 +83,14 @@
                       <option value="emprestimo"   @selected($type === 'emprestimo')>Empréstimo</option>
                       <option value="pagamento_emprestimo"   @selected($type === 'pagamento_emprestimo')>Pgto. Empréstimo</option>
                     </select>
+                  </div>
+                </div>
+
+                {{-- Establishment (descrição) --}}
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <label>Estabelecimento</label>
+                    <input type="text" class="form-control" name="estabelecimento" value="{{ $estabelecimento ?? '' }}" placeholder="Descrição contém...">
                   </div>
                 </div>
 

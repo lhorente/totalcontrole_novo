@@ -28,11 +28,15 @@
   .mr-dot-desejo { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #ADB5BD; display: inline-block; flex: none; }
   .mr-wish-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 18px 20px; }
   .mr-months-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 18px 20px; }
+  .mr-estab-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .mr-estab-list { border-right: 1px solid #eef0f2; }
+  .mr-estab-rank { width: 22px; height: 22px; min-width: 22px; border-radius: 50%; background: #fff; border: 1px solid #cfe3e1; color: #1B5E5C; font-size: .72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
   @media (max-width: 900px) {
     .mr-wish-grid, .mr-months-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 767px) {
-    .mr-two-col { grid-template-columns: minmax(0, 1fr); }
+    .mr-two-col, .mr-estab-grid { grid-template-columns: minmax(0, 1fr); }
+    .mr-estab-list { border-right: none; border-bottom: 1px solid #eef0f2; }
   }
   @media (max-width: 600px) {
     .mr-wish-grid, .mr-months-grid { grid-template-columns: minmax(0, 1fr); }
@@ -220,6 +224,101 @@
       </div>
 
     </div>
+
+    {{-- Onde mais gastamos (por estabelecimento) --}}
+    @if ($estabelecimentos->isNotEmpty())
+    @php
+      $mesAnteriorNome = mb_strtolower($mesesNomes[(int) $beforeMonthObj->format('n')]);
+      $estabTop = $estabelecimentos->take(10);
+      $estabResto = $estabelecimentos->slice(10);
+      $estabTopTotal = $estabTop->sum('total');
+    @endphp
+    <div class="mr-card mb-3" style="border-top:3px solid #2D8B86;">
+      <div class="mr-card-header">
+        <div>
+          <h6 class="mr-card-title"><i class="fas fa-store"></i> Onde mais gastamos</h6>
+          <span class="mr-card-sub">por estabelecimento · só despesas</span>
+        </div>
+        <span style="font-size:.85rem;color:#495057;">
+          @if ($estabResto->isNotEmpty())
+            Os {{ $estabTop->count() }} primeiros somam
+          @else
+            Somam
+          @endif
+          <strong>R$ {{ number_format($estabTopTotal, 2, ',', '.') }}</strong>
+          · <strong>{{ $totalDespesas > 0 ? round($estabTopTotal / $totalDespesas * 100) : 0 }}%</strong> das despesas do mês
+        </span>
+      </div>
+      <div class="mr-estab-grid">
+        <div class="mr-estab-list" style="padding:12px 14px;display:flex;flex-direction:column;gap:6px;">
+          <div class="d-none d-md-flex text-muted" style="gap:10px;padding:0 4px 2px;font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;">
+            <span style="width:22px;">#</span>
+            <span class="flex-grow-1">Estabelecimento</span>
+            <span style="width:80px;" class="text-right">vs {{ $mesAnteriorNome }}</span>
+            <span style="width:120px;" class="text-right">No mês</span>
+            <span style="width:24px;"></span>
+          </div>
+          @foreach ($estabTop as $i => $estab)
+            @include('transactions.partials.month_review_estab_row', ['rank' => $i + 1, 'estab' => $estab])
+          @endforeach
+          @if ($estabResto->isNotEmpty())
+            <div class="collapse" id="mr-estab-resto">
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                @foreach ($estabResto as $i => $estab)
+                  @include('transactions.partials.month_review_estab_row', ['rank' => $i + 1, 'estab' => $estab])
+                @endforeach
+              </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;padding:6px 4px 0;font-size:.8rem;">
+              <span class="text-muted">
+                + R$ {{ number_format($estabResto->sum('total'), 2, ',', '.') }} em outros {{ $estabResto->count() }} estabelecimento{{ $estabResto->count() > 1 ? 's' : '' }}
+              </span>
+              <a href="#mr-estab-resto" data-toggle="collapse" role="button" aria-expanded="false" aria-controls="mr-estab-resto">
+                ver todos os {{ $estabelecimentos->count() }} <i class="fas fa-chevron-down ml-1" style="font-size:.7rem;"></i>
+              </a>
+            </div>
+          @endif
+        </div>
+
+        <div class="mr-estab-side" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:#fbfcfd;">
+          <div class="text-muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;">Pra ficar de olho</div>
+
+          @if ($estabMaisFrequente)
+            <div style="border:1px solid #eef0f2;background:#fff;border-radius:.25rem;padding:12px 14px;">
+              <div style="font-size:.76rem;color:#8a94a3;">Onde mais voltamos</div>
+              <div style="font-weight:700;">{{ $estabMaisFrequente['nome'] }}</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#1B5E5C;">{{ $estabMaisFrequente['compras'] }} vezes</div>
+              <div class="text-muted" style="font-size:.76rem;">
+                R$ {{ number_format($estabMaisFrequente['total'], 2, ',', '.') }} no mês · média R$ {{ number_format($estabMaisFrequente['media'], 2, ',', '.') }} por vez
+              </div>
+            </div>
+          @endif
+
+          @if ($maiorCompra)
+            @php $maiorCompraData = $maiorCompra->data_compra ?? $maiorCompra->data; @endphp
+            <div style="border:1px solid #eef0f2;background:#fff;border-radius:.25rem;padding:12px 14px;">
+              <div style="font-size:.76rem;color:#8a94a3;">Maior compra única</div>
+              <div style="font-weight:700;">{{ \App\Models\Transaction::estabelecimentoNome($maiorCompra->descricao, $maiorCompra->descricao_banco) }}</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#1B5E5C;">R$ {{ number_format($maiorCompra->valor, 2, ',', '.') }}</div>
+              @if ($maiorCompraData)
+                <div class="text-muted" style="font-size:.76rem;">em {{ $maiorCompraData->format('d/m') }}</div>
+              @endif
+            </div>
+          @endif
+
+          @if ($gastosPequenos->isNotEmpty())
+            @php $gastosPequenosTotal = $gastosPequenos->sum('valor'); @endphp
+            <div style="border:1px solid #F0C77E;background:#FDF4E7;border-radius:.25rem;padding:12px 14px;">
+              <div style="font-size:.76rem;color:#8A5A1C;">Gastos pequenos que somam</div>
+              <div style="font-weight:700;color:#5c3b10;">{{ $gastosPequenos->count() }} compra{{ $gastosPequenos->count() > 1 ? 's' : '' }} abaixo de R$ 50</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#8A5A1C;">R$ {{ number_format($gastosPequenosTotal, 2, ',', '.') }}</div>
+              <div style="font-size:.76rem;color:#8A5A1C;">{{ $totalDespesas > 0 ? round($gastosPequenosTotal / $totalDespesas * 100) : 0 }}% das despesas do mês</div>
+            </div>
+          @endif
+        </div>
+      </div>
+    </div>
+    @endif
 
     {{-- Resumo de Empréstimos --}}
     @if ($emprestimosCount > 0)

@@ -243,6 +243,7 @@ class TransactionsController extends Controller
       'pessoas',
       'caixa',
       'caixas',
+      'estabelecimento',
       'total_a_pagar',
       'total_pago',
       'total_a_receber',
@@ -312,6 +313,7 @@ class TransactionsController extends Controller
     $id_cartao = $request->input('cartao');
     $id_pessoa = $request->input('pessoa');
     $id_caixa = $request->input('caixa');
+    $estabelecimento = trim((string) $request->input('estabelecimento')) ?: null;
 
     // Load selected filter objects
     $semCategoria = $id_categoria === Transaction::FILTER_SEM_CATEGORIA;
@@ -365,6 +367,9 @@ class TransactionsController extends Controller
       }
       if ($id_caixa){
         $filters['id_caixa'] = $id_caixa;
+      }
+      if ($estabelecimento){
+        $filters['estabelecimento'] = $estabelecimento;
       }
 
       $transactions = Transaction::search($filters, ['data_pagamento'=>'asc','data'=>'asc']);
@@ -441,6 +446,44 @@ class TransactionsController extends Controller
     $byCard = $despesas->whereNotNull('id_cartao')->groupBy('id_cartao')->sortByDesc(fn($g) => $g->sum('valor'));
     $maxCardValor = $byCard->isEmpty() ? 0 : $byCard->max(fn($g) => $g->sum('valor'));
     $totalForaCartao = $despesas->whereNull('id_cartao')->sum('valor');
+
+    // Onde mais gastamos (por estabelecimento)
+    // Só o que veio do banco: lançamentos manuais (provisões "Prov ...", totais "Cartão - ...") não são estabelecimentos
+    $totalDespesas = $despesas->sum('valor');
+    $doBanco = fn($t) => trim((string) $t->descricao_banco) !== '';
+    $despesasBanco = $despesas->filter($doBanco);
+    $estabKey = fn($t) => Transaction::estabelecimentoKey($t->descricao, $t->descricao_banco);
+
+    $prevDate = Carbon::createFromDate($year, $month, 1)->subMonth();
+    $gastoMesAnteriorPorEstab = Transaction::search(['year' => $prevDate->year, 'month' => $prevDate->month, 'tipo' => 'despesa'])
+      ->filter($doBanco)
+      ->groupBy($estabKey)
+      ->map(fn($g) => $g->sum('valor'));
+
+    $estabelecimentos = $despesasBanco->groupBy($estabKey)
+      ->map(function ($g, $key) use ($gastoMesAnteriorPorEstab, $totalDespesas) {
+        $total    = $g->sum('valor');
+        $anterior = $gastoMesAnteriorPorEstab->get($key, 0);
+        $categoria = $g->groupBy('id_categoria')->sortByDesc(fn($c) => $c->count())->first()->first()->category;
+
+        return [
+          'nome'      => Transaction::estabelecimentoNome($g->first()->descricao, $g->first()->descricao_banco),
+          'categoria' => optional($categoria)->nome,
+          'compras'   => $g->count(),
+          'total'     => $total,
+          'media'     => $total / $g->count(),
+          'share'     => $totalDespesas > 0 ? $total / $totalDespesas * 100 : 0,
+          // null = não gastou lá no mês anterior ("novo")
+          'variacao'  => $anterior > 0 ? ($total - $anterior) / $anterior * 100 : null,
+        ];
+      })
+      ->sortByDesc('total')
+      ->values();
+    $maxEstabValor = $estabelecimentos->max('total') ?? 0;
+
+    $estabMaisFrequente = $estabelecimentos->where('compras', '>=', 2)->sortByDesc('compras')->first();
+    $maiorCompra = $despesasBanco->sortByDesc('valor')->first();
+    $gastosPequenos = $despesasBanco->where('valor', '>', 0)->where('valor', '<', 50); // valor negativo = estorno, não é compra
 
     // Resumo de Empréstimos
     $emprestimosTx = $transactions->where('tipo', 'emprestimo');
@@ -530,6 +573,12 @@ class TransactionsController extends Controller
       'byCard',
       'maxCardValor',
       'totalForaCartao',
+      'totalDespesas',
+      'estabelecimentos',
+      'maxEstabValor',
+      'estabMaisFrequente',
+      'maiorCompra',
+      'gastosPequenos',
       'proximosMeses',
       'emprestimosCount',
       'emprestimosTotal',
