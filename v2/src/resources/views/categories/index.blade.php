@@ -56,7 +56,37 @@
     </div>
   </div>
 </div>
-@endsection
+
+{{-- Export Modal --}}
+<div class="modal fade" id="modal-export" tabindex="-1" role="dialog" aria-labelledby="modal-export-title" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header py-2 px-3">
+        <h6 class="modal-title" id="modal-export-title"><i class="fas fa-download mr-1"></i> Exportar categorias</h6>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body px-3 py-3">
+        <p class="text-muted mb-2" style="font-size:.85em">Formato:</p>
+        <div class="btn-group btn-group-sm d-flex mb-3" role="group" id="export-fmt-toggle">
+          <button type="button" class="btn btn-outline-secondary active" data-fmt="csv">CSV</button>
+          <button type="button" class="btn btn-outline-secondary" data-fmt="json">JSON</button>
+          <button type="button" class="btn btn-outline-secondary" data-fmt="md">Markdown</button>
+        </div>
+        <div class="d-flex flex-column" style="gap:.5rem">
+          <button type="button" class="btn btn-primary btn-block" id="export-do-download">
+            <i class="fas fa-download mr-1"></i> Baixar arquivo
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-block" id="export-do-copy">
+            <i class="fas fa-copy mr-1"></i> Copiar para área de transferência
+          </button>
+        </div>
+        <div id="export-copy-feedback" class="mt-2 text-center text-success" style="display:none; font-size:.85em">
+          <i class="fas fa-check mr-1"></i> Copiado!
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 (function () {
