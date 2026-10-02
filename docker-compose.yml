@@ -84,6 +84,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
     networks:
       - totalcontrole-net
+    # Mesmo usuário do Apache: rodando como root, o cache/logs que as tarefas
+    # escrevem em storage/ ficavam com dono root e o app (www-data) passava a
+    # dar "Permission denied"/"No such file or directory" ao gravar ali.
+    user: www-data
     entrypoint: ["sh", "-c", "while true; do php artisan schedule:run --no-interaction; sleep 60; done"]
 
 # Rede e volume não têm "name:" fixo, então o Compose os prefixa com
