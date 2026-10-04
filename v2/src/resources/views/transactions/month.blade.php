@@ -596,6 +596,24 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('met-btn-delete').addEventListener('click', function () {
     var subtitle = document.getElementById('met-subtitle').textContent;
     if (confirm('Tem certeza que deseja excluir o lançamento ' + subtitle.split('•')[0].trim() + '? Esta ação não pode ser desfeita.')) {
+      // Guarda onde a linha estava (vizinhas na ordem atual da tabela) para marcar o lugar após recarregar
+      try {
+        var m   = document.getElementById('form-met-delete').action.match(/(\d+)$/);
+        var row = m ? document.querySelector('#view-table tr[data-id="' + m[1] + '"]') : null;
+        if (row) {
+          var params = new URLSearchParams(location.search);
+          params.sort();
+          var prev = row.previousElementSibling, next = row.nextElementSibling;
+          sessionStorage.setItem('transactions_deleted', JSON.stringify({
+            page:  location.pathname + '?' + params.toString(),
+            prev:  prev ? prev.dataset.id : null,
+            next:  next ? next.dataset.id : null,
+            desc:  row.dataset.sortDescricao || '',
+            valor: parseFloat(row.dataset.sortValor || '0'),
+            ts:    Date.now()
+          }));
+        }
+      } catch (e) {}
       document.getElementById('form-met-delete').submit();
     }
   });
@@ -855,10 +873,53 @@ document.addEventListener('DOMContentLoaded', function () {
   try {
     var savedScroll = JSON.parse(sessionStorage.getItem(SCROLL_STORAGE_KEY) || 'null');
     var focusId     = sessionStorage.getItem(FOCUS_STORAGE_KEY);
+    var deleted     = JSON.parse(sessionStorage.getItem('transactions_deleted') || 'null');
     sessionStorage.removeItem(SCROLL_STORAGE_KEY);
     sessionStorage.removeItem(FOCUS_STORAGE_KEY);
+    sessionStorage.removeItem('transactions_deleted');
 
-    if (savedScroll && savedScroll.page === pageKey && Date.now() - savedScroll.ts < 30 * 60 * 1000) {
+    // Lançamento excluído pelo modal: linha temporária no lugar onde ele estava, que some sozinha
+    var marker = null;
+    if (deleted && deleted.page === pageKey && Date.now() - deleted.ts < 5 * 60 * 1000) {
+      var tbody   = document.querySelector('#view-table tbody');
+      var prevRow = deleted.prev ? document.querySelector('#view-table tr[data-id="' + deleted.prev + '"]') : null;
+      var nextRow = deleted.next ? document.querySelector('#view-table tr[data-id="' + deleted.next + '"]') : null;
+      if (tbody && (prevRow || nextRow || !tbody.children.length)) {
+        marker = document.createElement('tr');
+        var td = document.createElement('td');
+        td.colSpan = document.querySelectorAll('#view-table thead th').length || 1;
+        td.style.cssText = 'background:#FEF2F2;color:#9B1C1C;border-top:2px solid #FCA5A5;border-bottom:2px solid #FCA5A5;font-size:.85em;padding:.4rem .75rem;';
+        var icone = document.createElement('i');
+        icone.className = 'fas fa-trash-alt mr-2';
+        var texto = document.createElement('span');
+        texto.style.textDecoration = 'line-through';
+        texto.textContent = deleted.desc + (deleted.valor ? ' · R$ ' + deleted.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+        var rotulo = document.createElement('strong');
+        rotulo.className = 'mr-2';
+        rotulo.textContent = 'Excluído:';
+        td.appendChild(icone);
+        td.appendChild(rotulo);
+        td.appendChild(texto);
+        marker.appendChild(td);
+        if (prevRow) { prevRow.after(marker); } else if (nextRow) { nextRow.before(marker); } else { tbody.appendChild(marker); }
+      }
+    }
+
+    // Visão em cartões: a tabela está escondida, então a marcação não aparece — só restaura a rolagem
+    if (marker && marker.offsetParent === null) {
+      marker.remove();
+      marker = null;
+    }
+
+    if (marker) {
+      if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+      marker.scrollIntoView({ block: 'center' });
+      setTimeout(function () {
+        marker.style.transition = 'opacity .8s ease';
+        marker.style.opacity = '0';
+        setTimeout(function () { marker.remove(); }, 800);
+      }, 2500);
+    } else if (savedScroll && savedScroll.page === pageKey && Date.now() - savedScroll.ts < 30 * 60 * 1000) {
       if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
 
       var focusRow = focusId ? document.querySelector('#view-table tr[data-id="' + focusId + '"]') : null;
@@ -906,7 +967,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var EXPORT_HEADERS = ['ID', 'Data', 'Descrição', 'Desc. Banco', 'Chave Banco', 'Tipo', 'Categoria', 'Cartão', 'Pessoa', 'Valor', 'Pgto.', 'Recebimento', 'Workspace'];
 
   function getTransactionData() {
-    var rows = document.querySelectorAll('#view-table tbody tr');
+    var rows = document.querySelectorAll('#view-table tbody tr[data-id]');
     var data = [];
     rows.forEach(function (row) {
       var d = row.dataset;
