@@ -99,6 +99,13 @@ Prefix any of the above with `docker compose exec -u www-data total_controle_v2`
 - Loan pendente/recebido follows the `summary_pessoal.blade.php` definition (`valor(emprestimo) − valor(pagamento_emprestimo)` grouped by `id_cliente`) — **not** the dashboard's older definition (`data_recebimento` on the `emprestimo` row itself). The two are intentionally left unreconciled; don't assume they agree.
 - The next-3-months forecast badge (tranquilo/atenção/no vermelho/"sem dados ainda") is a heuristic comparing predicted `sobra` (receita − despesa) as a % of that future month's receita; falls back to a neutral "sem dados ainda" when no `tipo = 'lucro'` transaction is logged yet for that month — common in this workspace, since income tends to get logged close to the date rather than in advance.
 
+### "Nosso Ano" (annual review / next-year budget base)
+
+- `GET /transactions/year-review/{year?}?base=12m|cal` (route `transactions.yearReview`) → `TransactionsController::yearReview()` → `resources/views/transactions/year-review.blade.php`. Same visual language as "Nosso Mês" (its `mr-*` CSS is copied inline, not shared), meant to feed planning the next year's budget.
+- Only **closed months** (before the current month) count toward averages/KPIs; the current and future months still show in the "Mês a mês" chart, hatched, with whatever is already logged.
+- "Base para o orçamento" groups `despesa` by `id_categoria` (one level, subcategories aren't rolled up) over either the last 12 closed months ending at the selected year's last closed month (`base=12m`, default) or that year's closed months (`base=cal`, divides by the number of closed months). Profile per category: `sazonal` (spend in ≤ half the months), `todo` (≥ 10/12 of the months and coefficient of variation ≤ 0.35 over months with spend), else `varia`; uncategorized is its own `sem` row. Suggested monthly amount = total ÷ months; the "reajuste %" and the CSV export are client-side only (JS at the bottom of the view).
+- "Prov …" manual provision entries get no special treatment here on purpose; provisions are planned as a separate feature.
+
 ## Database
 
 - Both v1 (CakePHP) and v2 (Laravel) read/write the **same MySQL schema**. Table names are largely Portuguese/legacy (`transacoes`, `clientes`, `categorias`, `de_para_transacoes`) since v2 was built on top of v1's schema — don't assume Laravel default naming conventions when writing raw queries or migrations.
