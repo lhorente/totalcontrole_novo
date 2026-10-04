@@ -762,21 +762,31 @@ document.addEventListener('DOMContentLoaded', function () {
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── Table sorting ────────────────────────────────────────────────────────
+  // A ordenação é guardada no sessionStorage da aba para sobreviver ao recarregamento da
+  // página que acontece depois de criar, alterar ou excluir um lançamento pelo modal
+  var SORT_STORAGE_KEY = 'transactions_sort';
   var sortState = { key: null, dir: 1 };
 
-  function sortTable(key, type) {
+  function sortTable(key, type, forcedDir) {
     var table = document.querySelector('#view-table table');
     if (!table) return;
     var tbody = table.querySelector('tbody');
     var rows  = Array.from(tbody.querySelectorAll('tr'));
 
-    // Toggle direction when clicking the same column, otherwise default asc
-    if (sortState.key === key) {
+    if (forcedDir) {
+      sortState.key = key;
+      sortState.dir = forcedDir;
+    } else if (sortState.key === key) {
+      // Toggle direction when clicking the same column, otherwise default asc
       sortState.dir = sortState.dir === 1 ? -1 : 1;
     } else {
       sortState.key = key;
       sortState.dir = 1;
     }
+
+    try {
+      sessionStorage.setItem(SORT_STORAGE_KEY, JSON.stringify({ key: key, type: type, dir: sortState.dir }));
+    } catch (e) {}
 
     rows.sort(function (a, b) {
       var aVal = (a.dataset['sort' + key.charAt(0).toUpperCase() + key.slice(1)] || '').trim();
@@ -809,6 +819,59 @@ document.addEventListener('DOMContentLoaded', function () {
       sortTable(th.dataset.sortKey, th.dataset.sortType);
     });
   });
+
+  // Reaplica a última ordenação escolhida (se a coluna existir nesta tela)
+  try {
+    var savedSort = JSON.parse(sessionStorage.getItem(SORT_STORAGE_KEY) || 'null');
+    if (savedSort && savedSort.key && document.querySelector('.th-sortable[data-sort-key="' + savedSort.key + '"]')) {
+      sortTable(savedSort.key, savedSort.type, savedSort.dir === -1 ? -1 : 1);
+    }
+  } catch (e) {}
+
+  // ── Posição na página ────────────────────────────────────────────────────
+  // Ao sair (salvar/excluir pelo modal, abrir um lançamento), guarda a rolagem; ao voltar para a
+  // mesma listagem, rola de volta. Se um lançamento foi editado pelo modal, centraliza nele.
+  var SCROLL_STORAGE_KEY = 'transactions_scroll';
+  var FOCUS_STORAGE_KEY  = 'transactions_focus_id';
+  // O _back vem do Laravel (fullUrl), que reordena a query string: compara com os parâmetros ordenados
+  var params = new URLSearchParams(location.search);
+  params.sort();
+  var pageKey = location.pathname + '?' + params.toString();
+
+  window.addEventListener('pagehide', function () {
+    try {
+      sessionStorage.setItem(SCROLL_STORAGE_KEY, JSON.stringify({ page: pageKey, y: window.scrollY, ts: Date.now() }));
+    } catch (e) {}
+  });
+
+  var formMet = document.getElementById('form-met');
+  if (formMet) {
+    formMet.addEventListener('submit', function () {
+      var m = formMet.action.match(/(\d+)$/);
+      try { if (m) { sessionStorage.setItem(FOCUS_STORAGE_KEY, m[1]); } } catch (e) {}
+    });
+  }
+
+  try {
+    var savedScroll = JSON.parse(sessionStorage.getItem(SCROLL_STORAGE_KEY) || 'null');
+    var focusId     = sessionStorage.getItem(FOCUS_STORAGE_KEY);
+    sessionStorage.removeItem(SCROLL_STORAGE_KEY);
+    sessionStorage.removeItem(FOCUS_STORAGE_KEY);
+
+    if (savedScroll && savedScroll.page === pageKey && Date.now() - savedScroll.ts < 30 * 60 * 1000) {
+      if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+
+      var focusRow = focusId ? document.querySelector('#view-table tr[data-id="' + focusId + '"]') : null;
+      if (focusRow && focusRow.offsetParent !== null) {
+        focusRow.scrollIntoView({ block: 'center' });
+        focusRow.style.transition = 'background-color 1.5s ease';
+        focusRow.style.backgroundColor = '#FFF3CD';
+        setTimeout(function () { focusRow.style.backgroundColor = ''; }, 1200);
+      } else {
+        window.scrollTo(0, savedScroll.y);
+      }
+    }
+  } catch (e) {}
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── View mode toggle ─────────────────────────────────────────────────────
