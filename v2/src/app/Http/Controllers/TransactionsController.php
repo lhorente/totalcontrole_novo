@@ -590,6 +590,145 @@ class TransactionsController extends Controller
     ));
   }
 
+  public function yearReview(Request $request, $year = null){
+    $year  = (int) ($year ?? date('Y'));
+    $base  = $request->input('base') === 'cal' ? 'cal' : '12m';
+    $today = now()->startOfMonth();
+
+    // Mês fechado = anterior ao mês corrente
+    $closedMonths = $year < $today->year ? 12 : ($year > $today->year ? 0 : $today->month - 1);
+
+    $yearTx = Transaction::search(['year' => $year]);
+    $prevYearTx = Transaction::search(['year' => $year - 1, 'tipo' => 'despesa']);
+
+    $despesasPorMes = $yearTx->where('tipo', 'despesa')->groupBy(fn($t) => (int) $t->data->format('n'))->map(fn($g) => $g->sum('valor'));
+    $receitasPorMes = $yearTx->where('tipo', 'lucro')->groupBy(fn($t) => (int) $t->data->format('n'))->map(fn($g) => $g->sum('valor'));
+    $despesasAnoAnteriorPorMes = $prevYearTx->groupBy(fn($t) => (int) $t->data->format('n'))->map(fn($g) => $g->sum('valor'));
+
+    // Mês a mês + KPIs (só meses fechados entram nas médias)
+    $meses = [];
+    for ($m = 1; $m <= 12; $m++) {
+      $meses[$m] = [
+        'despesa'  => $despesasPorMes->get($m, 0),
+        'anterior' => $despesasAnoAnteriorPorMes->get($m, 0),
+        'receita'  => $receitasPorMes->get($m, 0),
+        'fechado'  => $m <= $closedMonths,
+      ];
+    }
+    $fechados = collect($meses)->filter(fn($m) => $m['fechado']);
+    $totalSaiu       = $fechados->sum('despesa');
+    $totalEntrou     = $fechados->sum('receita');
+    $mediaMensal     = $closedMonths > 0 ? $totalSaiu / $closedMonths : 0;
+    $medianaMensal   = $closedMonths > 0 ? $fechados->pluck('despesa')->median() : 0;
+    $mesMaisPesado   = $closedMonths > 0 ? $fechados->sortByDesc('despesa')->keys()->first() : null;
+    $mesesSemReceita = $fechados->filter(fn($m) => $m['receita'] <= 0)->keys();
+    $maxMesValor     = collect($meses)->flatMap(fn($m) => [$m['despesa'], $m['anterior']])->max();
+
+    $semCategoriaAno = $yearTx->where('tipo', 'despesa')->whereNull('id_categoria')
+      ->filter(fn($t) => (int) $t->data->format('n') <= $closedMonths);
+
+    // Base para o orçamento: últimos 12 meses fechados (terminando no último mês fechado do ano) ou o ano calendário
+    if ($base === 'cal') {
+      $baseInicio = Carbon::create($year, 1, 1);
+      $baseMeses  = $closedMonths;
+    } else {
+      $baseFim    = Carbon::create($year, max($closedMonths, 1), 1);
+      $baseInicio = $closedMonths > 0 ? $baseFim->copy()->subMonths(11) : null;
+      $baseMeses  = $closedMonths > 0 ? 12 : 0;
+    }
+
+    $orcamento = collect();
+    $baseJanela = [];
+    if ($baseMeses > 0) {
+      $baseFimData = $baseInicio->copy()->addMonths($baseMeses)->subDay();
+      for ($i = 0; $i < $baseMeses; $i++) {
+        $baseJanela[] = $baseInicio->copy()->addMonths($i)->format('Y-m');
+      }
+
+      $despesasEntre = fn(Carbon $de, Carbon $ate) => Transaction::where('status', '!=', 'cancelado')
+        ->where('tipo', 'despesa')
+        ->whereBetween('data', [$de->toDateString(), $ate->toDateString()])
+        ->with('category')
+        ->get();
+
+      $baseTx = $despesasEntre($baseInicio, $baseFimData);
+      $anteriorPorCategoria = $despesasEntre($baseInicio->copy()->subYear(), $baseFimData->copy()->subYear())
+        ->groupBy(fn($t) => $t->id_categoria ?: 0)
+        ->map(fn($g) => $g->sum('valor'));
+
+      $orcamento = $baseTx->groupBy(fn($t) => $t->id_categoria ?: 0)
+        ->map(function ($g, $idCategoria) use ($baseJanela, $baseMeses, $anteriorPorCategoria) {
+          $porMes = $g->groupBy(fn($t) => $t->data->format('Y-m'))->map(fn($m) => $m->sum('valor'));
+          $mensal = collect($baseJanela)->map(fn($ym) => $porMes->get($ym, 0));
+          $total  = $g->sum('valor');
+          $comGasto = $mensal->filter(fn($v) => $v > 0);
+          $mesesComGasto = $comGasto->count();
+
+          // Perfil: sazonal (≤ metade dos meses), todo mês (quase todos os meses e pouca variação) ou varia
+          if ($idCategoria == 0) {
+            $perfil = 'sem';
+          } elseif ($mesesComGasto <= $baseMeses / 2) {
+            $perfil = 'sazonal';
+          } else {
+            $media = $comGasto->avg();
+            $desvio = sqrt($comGasto->map(fn($v) => ($v - $media) ** 2)->avg());
+            $perfil = ($mesesComGasto >= $baseMeses * 10 / 12 && $media > 0 && $desvio / $media <= 0.35) ? 'todo' : 'varia';
+          }
+
+          $picoIdx  = $mensal->search($mensal->max());
+          $anterior = $anteriorPorCategoria->get($idCategoria, 0);
+
+          return [
+            'id_categoria' => $idCategoria ?: null,
+            'nome'         => $idCategoria ? (optional($g->first()->category)->nome ?? 'Categoria #'.$idCategoria) : 'Sem categoria',
+            'mensal'       => $mensal->values()->all(),
+            'meses'        => $mesesComGasto,
+            'perfil'       => $perfil,
+            'total'        => $total,
+            'variacao'     => $anterior > 0 ? ($total - $anterior) / $anterior * 100 : null,
+            'pico_mes'     => Carbon::createFromFormat('Y-m-d', $baseJanela[$picoIdx].'-01'),
+            'pico_valor'   => $mensal->max(),
+            'base_mensal'  => $total / $baseMeses,
+          ];
+        })
+        // "Sem categoria" sempre por último
+        ->sortBy(fn($c) => [$c['perfil'] === 'sem' ? 1 : 0, -$c['total']])
+        ->values();
+    }
+
+    // Sonhos e planos: desejos ainda sem data
+    $desejosSemData = Evento::modulo('planejamento')
+      ->whereNotIn('status', ['concluido', 'cancelado'])
+      ->whereNull('data_vencimento')
+      ->whereHas('planejamento', fn($q) => $q->where('prioridade', 'desejo'))
+      ->with('planejamento.bem')
+      ->orderByDesc('valor')
+      ->get();
+
+    $ultimoMesFechado = $closedMonths > 0 ? Carbon::create($year, $closedMonths, 1) : null;
+
+    return view('transactions/year-review', compact(
+      'year',
+      'base',
+      'meses',
+      'closedMonths',
+      'totalSaiu',
+      'totalEntrou',
+      'mediaMensal',
+      'medianaMensal',
+      'mesMaisPesado',
+      'mesesSemReceita',
+      'maxMesValor',
+      'semCategoriaAno',
+      'baseInicio',
+      'baseMeses',
+      'baseJanela',
+      'orcamento',
+      'desejosSemData',
+      'ultimoMesFechado'
+    ));
+  }
+
   public function search(Request $request){
     $month = $request->input('m');
     $year = $request->input('y', date('Y'));
