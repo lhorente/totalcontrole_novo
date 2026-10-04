@@ -127,6 +127,9 @@
           <div class="info-box-content">
             <span class="info-box-text">Ainda vamos pagar</span>
             <span class="info-box-number" style="font-size:1em">R$ {{ number_format($totalAPagar, 2, ',', '.') }}</span>
+            @if ($provisoesEmAberto > 0)
+              <a href="{{ route('orcamento.mes', [$year, (int) $month]) }}" class="text-muted" style="font-size:.72rem;">inclui R$ {{ number_format($provisoesEmAberto, 2, ',', '.') }} de provisões do orçamento</a>
+            @endif
           </div>
         </div>
       </div>
@@ -392,7 +395,7 @@
       <div class="mr-card-header">
         <div>
           <h6 class="mr-card-title"><i class="fas fa-calendar-alt"></i> Os próximos meses</h6>
-          <span class="mr-card-sub">previsão com base no que já está lançado</span>
+          <span class="mr-card-sub">previsão com base no que já está lançado e nas provisões do orçamento</span>
         </div>
       </div>
       <div class="mr-months-grid">

@@ -15,6 +15,7 @@ use App\Http\Controllers\PlanejamentoController;
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\SmartposImportController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\OrcamentoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -122,6 +123,22 @@ Route::middleware(['auth:sanctum', 'verified', 'two_factor.enabled', 'workspace'
     Route::get('/edit/{id}', [PlanejamentoController::class, 'edit'])->name('edit');
     Route::post('/edit/{id}', [PlanejamentoController::class, 'update'])->name('update');
     Route::delete('/{id}', [PlanejamentoController::class, 'destroy'])->name('destroy');
+  });
+
+  // Orçamento e provisões
+  Route::prefix('orcamento')->name('orcamento.')->group(function () {
+    Route::get('/itens/{id}/edit', [OrcamentoController::class, 'editItem'])->name('item.edit');
+    Route::post('/itens/{id}', [OrcamentoController::class, 'updateItem'])->name('item.update');
+    Route::delete('/itens/{id}', [OrcamentoController::class, 'destroyItem'])->name('item.destroy');
+    Route::get('/{ano?}', [OrcamentoController::class, 'index'])->where('ano', '[0-9]{4}')->name('index');
+    Route::post('/{ano}', [OrcamentoController::class, 'store'])->where('ano', '[0-9]{4}')->name('store');
+    Route::get('/{ano}/config', [OrcamentoController::class, 'config'])->name('config');
+    Route::post('/{ano}/config', [OrcamentoController::class, 'updateConfig'])->name('config.update');
+    Route::get('/{ano}/itens/new', [OrcamentoController::class, 'createItem'])->name('item.create');
+    Route::post('/{ano}/itens', [OrcamentoController::class, 'storeItem'])->name('item.store');
+    Route::get('/{ano}/mes/{mes}', [OrcamentoController::class, 'mes'])->name('mes');
+    Route::get('/{ano}/provisoes', [OrcamentoController::class, 'provisoes'])->name('provisoes');
+    Route::post('/{ano}/provisoes', [OrcamentoController::class, 'converterProvisoes'])->name('provisoes.converter');
   });
 
   Route::post('/workspace/switch/{id}', [WorkspaceController::class, 'switch'])->name('workspace.switch');

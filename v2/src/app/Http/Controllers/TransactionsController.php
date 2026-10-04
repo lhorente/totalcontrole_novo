@@ -429,7 +429,10 @@ class TransactionsController extends Controller
     // KPIs
     $totalEntrou   = $transactions->where('tipo', 'lucro')->sum('valor');
     $totalPago     = $transactions->where('tipo', 'despesa')->whereNotNull('data_pagamento')->sum('valor');
-    $totalAPagar   = $transactions->where('tipo', 'despesa')->whereNull('data_pagamento')->sum('valor');
+    // Provisões do Orçamento ainda em aberto (planejado que não saiu) contam como "ainda vamos pagar"
+    $orcamentoService = app(\App\Services\OrcamentoService::class);
+    $provisoesEmAberto = $orcamentoService->provisoesEmAberto((int) $year, (int) $month);
+    $totalAPagar   = $transactions->where('tipo', 'despesa')->whereNull('data_pagamento')->sum('valor') + $provisoesEmAberto;
     $sobraPrevista = $totalEntrou - ($totalPago + $totalAPagar);
 
     $despesas = $transactions->where('tipo', 'despesa');
@@ -504,7 +507,7 @@ class TransactionsController extends Controller
       $futureDate = Carbon::createFromDate($year, $month, 1)->addMonths($i);
       $futureTx      = Transaction::search(['year' => $futureDate->year, 'month' => $futureDate->month]);
       $futureReceita = $futureTx->where('tipo', 'lucro')->sum('valor');
-      $futureTotal   = $futureTx->where('tipo', 'despesa')->sum('valor');
+      $futureTotal   = $futureTx->where('tipo', 'despesa')->sum('valor') + $orcamentoService->provisoesEmAberto($futureDate->year, $futureDate->month);
       $futureSobra   = $futureReceita - $futureTotal;
 
       if ($futureReceita > 0) {
@@ -565,6 +568,7 @@ class TransactionsController extends Controller
       'totalEntrou',
       'totalPago',
       'totalAPagar',
+      'provisoesEmAberto',
       'sobraPrevista',
       'totalDespesaMesAtual',
       'byCategory',
