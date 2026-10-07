@@ -37,6 +37,7 @@
                 <label class="met-label" for="met-valor">Valor</label>
                 <div class="met-currency-wrap">
                   <span class="met-currency-prefix">R$</span>
+                  <input type="text" id="met-valor-mobile" class="met-input met-valor-mobile" inputmode="numeric" autocomplete="off" placeholder="0,00" data-valor-for="met-valor" aria-label="Valor">
                   <input type="number" id="met-valor" name="valor" class="met-input" step="0.01" min="0">
                 </div>
               </div>
@@ -45,7 +46,7 @@
             <div class="met-field-group met-grid-2" style="margin-top:14px">
               <div class="met-form-group">
                 <label class="met-label" for="met-data">Data</label>
-                <input type="date" id="met-data" name="data" class="met-input">
+                <input type="date" id="met-data" data-mobile-picker name="data" class="met-input">
               </div>
               <div class="met-form-group">
                 <label class="met-label" for="met-tipo">Tipo</label>
@@ -112,7 +113,7 @@
               <div class="met-field-group met-grid-2">
                 <div class="met-form-group">
                   <label class="met-label" for="met-data-pagamento">Data de pagamento</label>
-                  <input type="date" id="met-data-pagamento" name="data_pagamento" class="met-input">
+                  <input type="date" id="met-data-pagamento" data-mobile-picker name="data_pagamento" class="met-input">
                 </div>
                 <div class="met-form-group" style="display:flex; align-items:flex-end; padding-bottom:2px">
                   <label class="met-checkbox-label">

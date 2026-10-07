@@ -142,6 +142,132 @@
 
 .met-currency-wrap .met-input { padding-left: 38px; }
 
+/* ── Mobile: valor estilo caixa eletrônico + seletor de data sem teclado ─── */
+/* No desktop ficam os campos nativos (digitar é mais prático); no celular
+   eles somem e entram .met-valor-mobile e .met-datepicker (JS em month.blade). */
+.met-valor-mobile,
+.met-datepicker { display: none; }
+
+@media (max-width: 576px) {
+  /* A régua de dias precisa da largura toda. minmax(0, …) + min-width: 0
+     impedem que os 31 dias alarguem a coluna (e o modal) em vez de rolar. */
+  .met-grid-2,
+  .met-grid-2-1 { grid-template-columns: minmax(0, 1fr); }
+
+  .met-form-group { min-width: 0; }
+
+  /* Só a régua de dias rola de lado; o corpo do modal não */
+  .met-body { overflow-x: hidden; }
+
+  .met-currency-wrap input[type="number"],
+  input[type="date"].met-input[data-mobile-picker] { display: none; }
+
+  .met-valor-mobile {
+    display: block;
+    font-size: 22px;
+    font-weight: 600;
+    text-align: right;
+    color: #212529;
+  }
+  .met-currency-wrap .met-currency-prefix {
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+
+  .met-datepicker { display: block; }
+}
+
+.met-dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.met-dp-nav {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid #ced4da;
+  border-radius: 50%;
+  background: #f8f9fa;
+  color: #1B5E5C;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.met-dp-nav:active { background: #e3efee; }
+
+.met-dp-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.met-dp-month {
+  font-size: 17px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.met-dp-summary {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.met-dp-days {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 0 6px;
+  -webkit-overflow-scrolling: touch;
+  /* Ao chegar no fim da régua, o arraste não "vaza" para a página atrás do
+     modal (que é um pouco mais larga que a tela e acabava rolando de lado) */
+  overscroll-behavior-x: contain;
+}
+
+.met-dp-day {
+  flex: 0 0 46px;
+  height: 56px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  background: #fff;
+  color: #495057;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.met-dp-day-wd {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.met-dp-day-num {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.met-dp-day.today { border: 2px solid #1B5E5C; }
+
+.met-dp-day.active {
+  background: #1B5E5C;
+  border-color: #1B5E5C;
+  color: #fff;
+}
+
 /* ── Category quick-buttons ──────────────────────────────────────────────── */
 .met-quick-buttons {
   display: flex;

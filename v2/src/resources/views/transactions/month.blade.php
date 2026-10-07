@@ -1,7 +1,7 @@
 @extends('layouts.dashboard')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/transaction-modal.css') }}">
+<link rel="stylesheet" href="{{ asset('css/transaction-modal.css') }}?v={{ filemtime(public_path('css/transaction-modal.css')) }}">
 @endpush
 
 @section('content')
@@ -585,6 +585,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } else if (!this.checked) {
       pgto.value = '';
     }
+    metMobileRefresh(pgto);
   });
 
   // Sync checkbox when date field is changed directly
@@ -673,12 +674,160 @@ document.addEventListener('DOMContentLoaded', function () {
     } else if (!this.checked) {
       pgto.value = '';
     }
+    metMobileRefresh(pgto);
   });
 
   // Create modal — sync checkbox when date is changed directly
   document.getElementById('mcr-data-pagamento').addEventListener('change', function () {
     document.getElementById('mcr-marcar-pago').checked = this.value !== '';
   });
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Mobile: data sem teclado + valor estilo caixa eletrônico ─────────────────
+// Os inputs nativos (date / number) continuam sendo os enviados no form; no
+// celular o CSS os esconde e estes controles só escrevem neles. Quem altera
+// o .value por código chama metMobileRefresh() para redesenhar.
+var MET_MESES  = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+var MET_SEMANA = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+var MET_SIGLA  = ['dom','seg','ter','qua','qui','sex','sáb'];
+
+function metYmd(y, m, d) {
+  return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
+function metMobileRefresh(el) {
+  if (el && el._metRefresh) el._metRefresh();
+}
+
+function metInitDatePicker(input) {
+  var box = document.createElement('div');
+  box.className = 'met-datepicker';
+  box.innerHTML =
+    '<div class="met-dp-head">' +
+      '<button type="button" class="met-dp-nav" data-step="-1" aria-label="Mês anterior"><i class="fas fa-chevron-left"></i></button>' +
+      '<div class="met-dp-title"><span class="met-dp-month"></span><span class="met-dp-summary"></span></div>' +
+      '<button type="button" class="met-dp-nav" data-step="1" aria-label="Próximo mês"><i class="fas fa-chevron-right"></i></button>' +
+    '</div>' +
+    '<div class="met-dp-days"></div>';
+  input.parentNode.insertBefore(box, input.nextSibling);
+
+  var days = box.querySelector('.met-dp-days');
+  var view = null; // {y, m} exibido quando o campo está vazio
+
+  function parse() {
+    var p = (input.value || '').split('-');
+    return p.length === 3 ? { y: +p[0], m: +p[1] - 1, d: +p[2] } : null;
+  }
+
+  function setValue(y, m, d) {
+    input.value = metYmd(y, m, d);
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    render();
+  }
+
+  function render() {
+    var sel = parse(), now = new Date();
+    if (sel) view = { y: sel.y, m: sel.m };
+    if (!view) view = { y: now.getFullYear(), m: now.getMonth() };
+
+    var nome = MET_MESES[view.m];
+    box.querySelector('.met-dp-month').textContent = nome.charAt(0).toUpperCase() + nome.slice(1) + ' ' + view.y;
+
+    var resumo = 'Nenhuma data';
+    if (sel) {
+      var ehHoje = sel.y === now.getFullYear() && sel.m === now.getMonth() && sel.d === now.getDate();
+      resumo = MET_SEMANA[new Date(sel.y, sel.m, sel.d).getDay()] + ', ' + sel.d + (ehHoje ? ' · hoje' : '');
+    }
+    box.querySelector('.met-dp-summary').textContent = resumo;
+
+    var ult = new Date(view.y, view.m + 1, 0).getDate(), html = '';
+    for (var d = 1; d <= ult; d++) {
+      var cls = 'met-dp-day';
+      if (sel && sel.y === view.y && sel.m === view.m && sel.d === d) cls += ' active';
+      if (view.y === now.getFullYear() && view.m === now.getMonth() && d === now.getDate()) cls += ' today';
+      html += '<button type="button" class="' + cls + '" data-day="' + d + '" aria-label="' + d + ' de ' + MET_MESES[view.m] + '">' +
+                '<span class="met-dp-day-wd">' + MET_SIGLA[new Date(view.y, view.m, d).getDay()] + '</span>' +
+                '<span class="met-dp-day-num">' + d + '</span>' +
+              '</button>';
+    }
+    days.innerHTML = html;
+    scrollToSelected();
+  }
+
+  // Centraliza o dia selecionado (ou hoje) na régua; só funciona com o modal visível
+  function scrollToSelected() {
+    var alvo = days.querySelector('.met-dp-day.active') || days.querySelector('.met-dp-day.today');
+    if (alvo && days.clientWidth) {
+      days.scrollLeft = alvo.offsetLeft - days.offsetLeft - (days.clientWidth - alvo.offsetWidth) / 2;
+    } else if (days.clientWidth) {
+      days.scrollLeft = 0;
+    }
+  }
+
+  box.querySelectorAll('.met-dp-nav').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var step = +this.dataset.step, sel = parse();
+      if (sel) {
+        // Troca o mês já na data, mantendo o dia (31/out → 30/nov)
+        var ult = new Date(sel.y, sel.m + step + 1, 0).getDate();
+        var alvo = new Date(sel.y, sel.m + step, Math.min(sel.d, ult));
+        setValue(alvo.getFullYear(), alvo.getMonth(), alvo.getDate());
+      } else {
+        var v = new Date(view.y, view.m + step, 1);
+        view = { y: v.getFullYear(), m: v.getMonth() };
+        render();
+      }
+    });
+  });
+
+  days.addEventListener('click', function (e) {
+    var btn = e.target.closest('.met-dp-day');
+    if (btn) setValue(view.y, view.m, +btn.dataset.day);
+  });
+
+  input.addEventListener('change', render);
+  input._metRefresh = function () { view = null; render(); };
+  input._metScroll  = scrollToSelected;
+  render();
+}
+
+function metInitValorMobile(display) {
+  var target = document.getElementById(display.dataset.valorFor);
+
+  function fmt(centavos) {
+    return (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Dígitos entram pela direita: 1 2 3 4 → 12,34
+  display.addEventListener('input', function () {
+    var dig = this.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 11);
+    var centavos = parseInt(dig || '0', 10);
+    this.value   = centavos ? fmt(centavos) : '';
+    target.value = centavos ? (centavos / 100).toFixed(2) : '';
+    this.setSelectionRange(this.value.length, this.value.length);
+  });
+
+  target._metRefresh = function () {
+    var v = parseFloat(target.value);
+    display.value = v ? fmt(Math.round(v * 100)) : '';
+  };
+  target._metRefresh();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('input[data-mobile-picker]').forEach(metInitDatePicker);
+  document.querySelectorAll('.met-valor-mobile').forEach(metInitValorMobile);
+
+  // Os modais preenchem os campos antes de abrir: redesenha ao abrir e
+  // centraliza a régua de dias quando já há largura para medir
+  $('#modal-edit-transaction, #modal-create-transaction')
+    .on('show.bs.modal', function () {
+      this.querySelectorAll('input[data-mobile-picker], .met-currency-wrap input[type="number"]').forEach(metMobileRefresh);
+    })
+    .on('shown.bs.modal', function () {
+      this.querySelectorAll('input[data-mobile-picker]').forEach(function (el) { el._metScroll && el._metScroll(); });
+    });
 });
 // ─────────────────────────────────────────────────────────────────────────────
 
