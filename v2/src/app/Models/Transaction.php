@@ -273,6 +273,110 @@ class Transaction extends Model
   }
 
   /**
+   * Busca avançada da tela "Buscar lançamentos". Devolve o builder ainda sem
+   * ordenação nem execução, para o controller agregar, listar e exportar a
+   * partir da mesma consulta. Chaves de $f (todas opcionais):
+   * id, q, de, ate, base (data|compra|pagamento), vmin, vmax, tipos[], cartao,
+   * digitos, caixa, origem (manual|importacao|pluggy|smartpos), categoria,
+   * pessoa, pagamento (pago|pendente), cancelados.
+   */
+  static function busca(array $f)
+  {
+    $query = (new Transaction())->newQuery()
+      ->with(['category', 'contact', 'wallet', 'credit_card']);
+
+    // ID identifica o lançamento sozinho (inclusive cancelado)
+    if (!empty($f['id'])) {
+      return $query->where('id', $f['id']);
+    }
+
+    if (empty($f['cancelados'])) {
+      $query->where('status', '!=', 'cancelado');
+    }
+
+    $colData = self::colunaDataBusca($f['base'] ?? null);
+    if (!empty($f['de'])) {
+      $query->whereRaw("$colData >= ?", [$f['de']]);
+    }
+    if (!empty($f['ate'])) {
+      $query->whereRaw("$colData <= ?", [$f['ate']]);
+    }
+
+    if (($f['q'] ?? '') !== '') {
+      $like = '%' . addcslashes($f['q'], '%_\\') . '%';
+      $query->where(function ($w) use ($like) {
+        $w->where('descricao', 'like', $like)->orWhere('descricao_banco', 'like', $like);
+      });
+    }
+
+    // valor é FLOAT: sem o ROUND, 87.40 (float) é maior que 87.40 e sairia de "até 87,40"
+    if (isset($f['vmin'])) {
+      $query->whereRaw('ROUND(valor, 2) >= ?', [$f['vmin']]);
+    }
+    if (isset($f['vmax'])) {
+      $query->whereRaw('ROUND(valor, 2) <= ?', [$f['vmax']]);
+    }
+
+    if (!empty($f['tipos'])) {
+      $query->whereIn('tipo', $f['tipos']);
+    }
+
+    // Cartão: inclui os cartões virtuais filhos (mesma regra do search())
+    if (!empty($f['cartao'])) {
+      $childCardIds = CreditCard::where('id_cartao_pai', $f['cartao'])->pluck('id')->toArray();
+      $query->whereIn('id_cartao', array_merge([$f['cartao']], $childCardIds));
+    }
+
+    if (!empty($f['digitos'])) {
+      $query->where('ultimos_digitos_cartao', $f['digitos']);
+    }
+
+    if (!empty($f['caixa'])) {
+      $query->where('id_caixa', $f['caixa']);
+    }
+
+    // Importação CSV não grava origem, só a chave_banco
+    switch ($f['origem'] ?? null) {
+      case 'manual':     $query->whereNull('origem')->whereNull('chave_banco'); break;
+      case 'importacao': $query->whereNull('origem')->whereNotNull('chave_banco'); break;
+      case 'pluggy':     $query->where('origem', 'like', 'pluggy\_%'); break;
+      case 'smartpos':   $query->where('origem', 'smartpos'); break;
+    }
+
+    // Categoria: inclui subcategorias, ou "sem categoria" (mesma regra do search())
+    if (($f['categoria'] ?? null) === self::FILTER_SEM_CATEGORIA) {
+      $query->whereNull('id_categoria');
+    } elseif (!empty($f['categoria'])) {
+      $subcategoryIds = Category::where('parent_id', $f['categoria'])->pluck('id')->toArray();
+      $query->whereIn('id_categoria', array_merge([$f['categoria']], $subcategoryIds));
+    }
+
+    if (!empty($f['pessoa'])) {
+      $query->where('id_cliente', $f['pessoa']);
+    }
+
+    if (($f['pagamento'] ?? null) === 'pago') {
+      $query->whereNotNull('data_pagamento');
+    } elseif (($f['pagamento'] ?? null) === 'pendente') {
+      $query->whereNull('data_pagamento');
+    }
+
+    return $query;
+  }
+
+  /**
+   * Expressão SQL da data usada no período da busca. "Compra" cai para a data do
+   * lançamento quando data_compra não foi preenchida (só a Pluggy preenche).
+   */
+  static function colunaDataBusca($base)
+  {
+    return [
+      'compra'    => 'COALESCE(data_compra, data)',
+      'pagamento' => 'data_pagamento',
+    ][$base] ?? 'data';
+  }
+
+  /**
    * Gera a chave_banco usada para identificar/deduplicar transações importadas.
    * Formato: dataBanco(Y-m-d)|descricao|valor|dataFatura(Y-m)
    * dataFatura usa apenas ano-mês para que chaves geradas em dias diferentes

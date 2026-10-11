@@ -51,6 +51,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
               <li><a href="{{ route('transactions.yearReview') }}" class="dropdown-item">Nosso Ano</a></li>
               <li><a href="{{ route('orcamento.index') }}" class="dropdown-item">Orçamento</a></li>
               <li><a href="{{ url('/transactions/month') }}" class="dropdown-item">Resumo Mensal</a></li>
+              <li><a href="{{ route('transactions.search') }}" class="dropdown-item">Buscar lançamentos</a></li>
               <li><a href="{{ route('transactions.creditCards') }}" class="dropdown-item">Cartões de crédito</a></li>
               <li><a href="{{ url('/wallets/dashboard') }}" class="dropdown-item">Resumo de carteiras</a></li>
               <li><a href="{{ url('/transactions/import') }}" class="dropdown-item">Importar Tabela Cartão</a></li>
