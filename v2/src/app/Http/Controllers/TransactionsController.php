@@ -733,23 +733,30 @@ class TransactionsController extends Controller
     ));
   }
 
+  // Tipos oferecidos na busca (valor do enum => rótulo)
+  const TIPOS_BUSCA = [
+    'despesa'              => 'Despesa',
+    'lucro'                => 'Receita',
+    'transferencia'        => 'Transferência',
+    'investimento'         => 'Investimento',
+    'emprestimo'           => 'Empréstimo',
+    'pagamento_emprestimo' => 'Pgto. empréstimo',
+    'venda'                => 'Venda',
+  ];
+
+  const ORIGENS_BUSCA = [
+    'manual'     => 'Manual',
+    'importacao' => 'Importação CSV',
+    'pluggy'     => 'Pluggy',
+    'smartpos'   => 'Smartpos',
+  ];
+
+  // Acima disso a tela pede para refinar (a exportação CSV leva tudo)
+  const LIMITE_BUSCA = 1000;
+
   public function search(Request $request){
-    $month = $request->input('m');
-    $year = $request->input('y', date('Y'));
-    $type = $request->input('t');
-    $id_cliente = $request->input('ct');
-    $id_categoria = $request->input('categoria');
-    $id_cartao = $request->input('cartao');
-    $id_pessoa = $request->input('pessoa');
-    $id_caixa = $request->input('caixa');
+    $f = $this->filtrosBusca($request);
 
-    // Load selected filter objects
-    $categoria = $id_categoria ? Category::find($id_categoria) : null;
-    $cartao    = $id_cartao   ? CreditCard::find($id_cartao)  : null;
-    $pessoa    = $id_pessoa   ? Contact::find($id_pessoa)     : null;
-    $caixa     = $id_caixa   ? Wallet::where('id', $id_caixa)->where('id_usuario', Auth::id())->first() : null;
-
-    // Load filter option lists
     $categorias = Category::where('id_workspace', session('active_workspace_id'))
                            ->where('status', 'a')
                            ->orderBy('nome')
@@ -769,73 +776,245 @@ class TransactionsController extends Controller
                      ->orderBy('titulo')
                      ->get();
 
-    $ps = $request->input('ps');
-    if ($ps == 'lendings_not_paid'){
-      $transactions = Transaction::getLendingsNotPaid($id_cliente);
-    } else {
-      $filters = [
-        'year'  => $year,
-        'month' => $month,
-      ];
+    $query = Transaction::busca($f);
+    $colData = Transaction::colunaDataBusca($f['base']);
 
-      if ($type){
-        $filters['tipo'] = $type;
-      }
-      if ($id_categoria){
-        $filters['id_categoria'] = $id_categoria;
-      }
-      if ($id_cartao){
-        $filters['id_cartao'] = $id_cartao;
-      }
-      if ($id_pessoa){
-        $filters['id_pessoa'] = $id_pessoa;
-      }
-      if ($id_caixa){
-        $filters['id_caixa'] = $id_caixa;
-      }
-
-      $transactions = Transaction::search($filters, ['data_pagamento'=>'asc','data'=>'asc']);
+    if ($request->input('export') === 'csv') {
+      return $this->exportarBuscaCsv((clone $query)->orderByRaw("$colData DESC")->orderByDesc('id'));
     }
 
-    // Totals
-    $total_a_pagar    = $transactions->where('tipo', 'despesa')->whereNull('data_pagamento')->sum('valor');
-    $total_pago       = $transactions->where('tipo', 'despesa')->whereNotNull('data_pagamento')->sum('valor');
-    $total_a_receber  = $transactions->where('tipo', 'lucro')->whereNull('data_pagamento')->sum('valor');
-    $total_recebido   = $transactions->where('tipo', 'lucro')->whereNotNull('data_pagamento')->sum('valor');
+    $resumo = [
+      'qtd'       => (clone $query)->count(),
+      'total'     => (float) (clone $query)->sum('valor'),
+      'maior'     => (float) (clone $query)->max('valor'),
+      'despesas'  => (float) (clone $query)->where('tipo', 'despesa')->sum('valor'),
+      'receitas'  => (float) (clone $query)->where('tipo', 'lucro')->sum('valor'),
+      'tipos'     => (clone $query)->distinct()->count('tipo'),
+    ];
+    $resumo['media'] = $resumo['qtd'] ? $resumo['total'] / $resumo['qtd'] : 0;
 
-    $currentDateObj = new \DateTime;
-    $currentDateObj->setDate($year, $month ?: date('m'), 1);
-    $currentDateObj->setTime(0, 0);
+    $transactions = (clone $query)->orderByRaw("$colData DESC")->orderByDesc('id')
+                                  ->limit(self::LIMITE_BUSCA)->get();
 
-    $nextMonthObj = clone $currentDateObj;
-    $nextMonthObj->add(new \DateInterval('P1M'));
+    $params = $this->paramsBusca($f);
+    $chips  = $this->chipsBusca($f, $params, compact('categorias', 'cartoes', 'pessoas', 'caixas'));
 
-    $beforeMonthObj = clone $currentDateObj;
-    $beforeMonthObj->sub(new \DateInterval('P1M'));
+    // "Mais filtros" já abre quando algum filtro dele estiver em uso
+    $maisAberto = $f['base'] !== 'data' || $f['digitos'] || $f['caixa'] || $f['origem']
+               || $f['pessoa'] || $f['pagamento'] || $f['cancelados'];
 
-    $nav_route = 'transactions.search';
+    $tiposBusca   = self::TIPOS_BUSCA;
+    $origensBusca = self::ORIGENS_BUSCA;
+    $limiteBusca  = self::LIMITE_BUSCA;
 
     return view('transactions/search', compact(
-      'transactions',
-      'nextMonthObj',
-      'beforeMonthObj',
-      'year',
-      'month',
-      'type',
-      'categoria',
-      'categorias',
-      'cartao',
-      'cartoes',
-      'pessoa',
-      'pessoas',
-      'caixa',
-      'caixas',
-      'total_a_pagar',
-      'total_pago',
-      'total_a_receber',
-      'total_recebido',
-      'nav_route'
+      'f', 'transactions', 'resumo', 'params', 'chips', 'maisAberto',
+      'categorias', 'cartoes', 'pessoas', 'caixas',
+      'tiposBusca', 'origensBusca', 'limiteBusca'
     ));
+  }
+
+  /**
+   * Lê e normaliza os filtros da busca. Aceita também os parâmetros antigos
+   * (?y=&m=&t=&categoria=…), usados pelos links do Nosso Ano.
+   */
+  private function filtrosBusca(Request $request)
+  {
+    $data = function ($v) {
+      $d = $v ? \DateTime::createFromFormat('!Y-m-d', $v) : false;
+      return $d ? $d->format('Y-m-d') : null;
+    };
+    $valor = function ($v) {
+      $v = trim((string) $v);
+      if ($v === '') return null;
+      if (strpos($v, ',') !== false) $v = str_replace(['.', ','], ['', '.'], $v);
+      return is_numeric($v) ? round((float) $v, 2) : null;
+    };
+    $id = function ($v) {
+      return ctype_digit((string) $v) ? (int) $v : null;
+    };
+
+    $f = [
+      'q'          => trim((string) $request->input('q', '')),
+      'id'         => $id(ltrim((string) $request->input('id'), '#')),
+      'de'         => $data($request->input('de')),
+      'ate'        => $data($request->input('ate')),
+      'base'       => in_array($request->input('base'), ['compra', 'pagamento'], true) ? $request->input('base') : 'data',
+      'vmin'       => $valor($request->input('vmin')),
+      'vmax'       => $valor($request->input('vmax')),
+      'tipos'      => array_values(array_intersect(array_keys(self::TIPOS_BUSCA), (array) $request->input('tipos', []))),
+      'cartao'     => $id($request->input('cartao')),
+      'digitos'    => preg_replace('/\D/', '', (string) $request->input('digitos')) ?: null,
+      'caixa'      => $id($request->input('caixa')),
+      'origem'     => array_key_exists($request->input('origem'), self::ORIGENS_BUSCA) ? $request->input('origem') : null,
+      'categoria'  => $request->input('categoria') === Transaction::FILTER_SEM_CATEGORIA
+                        ? Transaction::FILTER_SEM_CATEGORIA : $id($request->input('categoria')),
+      'pessoa'     => $id($request->input('pessoa')),
+      'pagamento'  => in_array($request->input('pagamento'), ['pago', 'pendente'], true) ? $request->input('pagamento') : null,
+      'cancelados' => $request->boolean('cancelados'),
+    ];
+
+    // "#123" no campo de texto busca pelo ID (o celular não tem o campo de ID)
+    if (!$f['id'] && preg_match('/^#\s*(\d+)$/', $f['q'], $m)) {
+      $f['id'] = (int) $m[1];
+      $f['q']  = '';
+    }
+
+    // Parâmetros antigos
+    if ($request->filled('y') && !$request->has('de') && !$request->has('ate')) {
+      $ano = (int) $request->input('y');
+      $mes = (int) $request->input('m');
+      $ini = Carbon::create($ano, $mes ?: 1, 1);
+      $f['de']  = $ini->toDateString();
+      $f['ate'] = ($mes ? $ini->copy()->endOfMonth() : $ini->copy()->endOfYear())->toDateString();
+    }
+    if ($request->filled('t') && !$f['tipos']) {
+      $t = $request->input('t') === 'receita' ? 'lucro' : $request->input('t');
+      $f['tipos'] = array_key_exists($t, self::TIPOS_BUSCA) ? [$t] : [];
+    }
+    // Tela aberta sem nenhum parâmetro: mês atual. Período apagado no form
+    // chega como "de=&ate=" e aí vale "sem limite de data".
+    if (!$request->query()) {
+      $f['de']  = now()->startOfMonth()->toDateString();
+      $f['ate'] = now()->endOfMonth()->toDateString();
+    }
+
+    return $f;
+  }
+
+  /**
+   * Filtros normalizados de volta para query string (sem os vazios).
+   */
+  private function paramsBusca(array $f)
+  {
+    $fmt = fn ($v) => $v === null ? null : number_format($v, 2, ',', '');
+
+    return array_filter([
+      'q'          => $f['q'],
+      'id'         => $f['id'],
+      'de'         => $f['de'],
+      'ate'        => $f['ate'],
+      'base'       => $f['base'] !== 'data' ? $f['base'] : null,
+      'vmin'       => $fmt($f['vmin']),
+      'vmax'       => $fmt($f['vmax']),
+      'tipos'      => $f['tipos'],
+      'cartao'     => $f['cartao'],
+      'digitos'    => $f['digitos'],
+      'caixa'      => $f['caixa'],
+      'origem'     => $f['origem'],
+      'categoria'  => $f['categoria'],
+      'pessoa'     => $f['pessoa'],
+      'pagamento'  => $f['pagamento'],
+      'cancelados' => $f['cancelados'] ? 1 : null,
+    ], fn ($v) => $v !== null && $v !== '' && $v !== []);
+  }
+
+  /**
+   * Etiquetas dos filtros ativos, cada uma com o link que a remove.
+   */
+  private function chipsBusca(array $f, array $params, array $listas)
+  {
+    $sem = function (array $chaves) use ($params) {
+      $p = array_diff_key($params, array_flip($chaves));
+      // Sem período explícito a tela voltaria para o mês atual: "de=" mantém sem limite
+      if (!isset($p['de']) && !isset($p['ate'])) $p['de'] = '';
+      return route('transactions.search', $p);
+    };
+    $dataBr = fn ($d) => Carbon::parse($d)->format('d/m/Y');
+    $moeda  = fn ($v) => 'R$ ' . number_format($v, 2, ',', '.');
+    $nome   = fn ($lista, $id, $campo) => optional($lista->firstWhere('id', $id))->$campo ?? "#$id";
+
+    $chips = [];
+
+    if ($f['id']) {
+      $chips[] = ['label' => 'ID #' . $f['id'], 'url' => $sem(['id'])];
+      return $chips; // o ID ignora os demais filtros
+    }
+
+    if ($f['q'] !== '') {
+      $chips[] = ['label' => 'Texto: ' . $f['q'], 'url' => $sem(['q'])];
+    }
+    if ($f['de'] || $f['ate']) {
+      $label = $f['de'] && $f['ate'] ? $dataBr($f['de']) . ' a ' . $dataBr($f['ate'])
+             : ($f['de'] ? 'Desde ' . $dataBr($f['de']) : 'Até ' . $dataBr($f['ate']));
+      if ($f['base'] !== 'data') $label .= $f['base'] === 'compra' ? ' (compra)' : ' (pagamento)';
+      $chips[] = ['label' => $label, 'url' => $sem(['de', 'ate', 'base'])];
+    }
+    if ($f['vmin'] !== null || $f['vmax'] !== null) {
+      $label = $f['vmin'] !== null && $f['vmax'] !== null ? $moeda($f['vmin']) . ' a ' . number_format($f['vmax'], 2, ',', '.')
+             : ($f['vmin'] !== null ? 'A partir de ' . $moeda($f['vmin']) : 'Até ' . $moeda($f['vmax']));
+      $chips[] = ['label' => $label, 'url' => $sem(['vmin', 'vmax'])];
+    }
+    if ($f['tipos']) {
+      $chips[] = ['label' => implode(', ', array_map(fn ($t) => self::TIPOS_BUSCA[$t], $f['tipos'])), 'url' => $sem(['tipos'])];
+    }
+    if ($f['cartao']) {
+      $chips[] = ['label' => 'Cartão: ' . $nome($listas['cartoes'], $f['cartao'], 'descricao'), 'url' => $sem(['cartao'])];
+    }
+    if ($f['digitos']) {
+      $chips[] = ['label' => 'Final ' . $f['digitos'], 'url' => $sem(['digitos'])];
+    }
+    if ($f['caixa']) {
+      $chips[] = ['label' => 'Carteira: ' . $nome($listas['caixas'], $f['caixa'], 'titulo'), 'url' => $sem(['caixa'])];
+    }
+    if ($f['origem']) {
+      $chips[] = ['label' => 'Origem: ' . self::ORIGENS_BUSCA[$f['origem']], 'url' => $sem(['origem'])];
+    }
+    if ($f['categoria']) {
+      $label = $f['categoria'] === Transaction::FILTER_SEM_CATEGORIA ? 'Sem categoria'
+             : 'Categoria: ' . $nome($listas['categorias'], $f['categoria'], 'nome');
+      $chips[] = ['label' => $label, 'url' => $sem(['categoria'])];
+    }
+    if ($f['pessoa']) {
+      $chips[] = ['label' => 'Pessoa: ' . $nome($listas['pessoas'], $f['pessoa'], 'nome'), 'url' => $sem(['pessoa'])];
+    }
+    if ($f['pagamento']) {
+      $chips[] = ['label' => $f['pagamento'] === 'pago' ? 'Pagos' : 'Pendentes', 'url' => $sem(['pagamento'])];
+    }
+    if ($f['cancelados']) {
+      $chips[] = ['label' => 'Incluindo cancelados', 'url' => $sem(['cancelados'])];
+    }
+
+    return $chips;
+  }
+
+  /**
+   * CSV da busca (todas as linhas, sem o limite da tela), no formato que o
+   * Excel em pt-BR abre direto: ";" como separador, vírgula decimal e BOM UTF-8.
+   */
+  private function exportarBuscaCsv($query)
+  {
+    $nomeArquivo = 'lancamentos-' . now()->format('Y-m-d-His') . '.csv';
+
+    return response()->streamDownload(function () use ($query) {
+      $out = fopen('php://output', 'w');
+      fwrite($out, "\xEF\xBB\xBF");
+      fputcsv($out, ['ID', 'Data', 'Data da compra', 'Data de pagamento', 'Descrição', 'Descrição do banco',
+                     'Tipo', 'Categoria', 'Cartão', 'Pessoa', 'Carteira', 'Valor', 'Status', 'Origem'], ';');
+
+      $query->chunk(500, function ($linhas) use ($out) {
+        foreach ($linhas as $t) {
+          fputcsv($out, [
+            $t->id,
+            $t->data ? $t->data->format('d/m/Y') : '',
+            $t->data_compra ? $t->data_compra->format('d/m/Y') : '',
+            $t->data_pagamento ? Carbon::parse($t->data_pagamento)->format('d/m/Y') : '',
+            $t->descricao,
+            $t->descricao_banco,
+            self::TIPOS_BUSCA[$t->tipo] ?? $t->tipo,
+            optional($t->category)->nome,
+            optional($t->credit_card)->descricao,
+            optional($t->contact)->nome,
+            optional($t->wallet)->titulo,
+            number_format($t->valor, 2, ',', ''),
+            $t->status,
+            $t->origem,
+          ], ';');
+        }
+      });
+
+      fclose($out);
+    }, $nomeArquivo, ['Content-Type' => 'text/csv; charset=UTF-8']);
   }
 
   public function view($id){
