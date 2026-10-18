@@ -151,7 +151,7 @@ class PluggyTransactionSyncService
       'id_categoria'    => $mapeamento?->id_categoria,
       'descricao_banco' => $descricaoBanco,
       'descricao'       => $mapeamento?->descricao_local ?? $descricaoBanco,
-      'valor'           => (float) ($transacaoPluggy['amount'] ?? 0),
+      'valor'           => self::valorNaMoedaDaConta($transacaoPluggy),
       'data'            => $dataCalculada->format('Y-m-d'),
       // `data` é a data da fatura (calculada acima); `data_compra` preserva a
       // data real em que a compra aconteceu, reportada crua pela Pluggy --
@@ -168,6 +168,19 @@ class PluggyTransactionSyncService
       'origem'          => 'pluggy_' . $integracao->provider,
       'id_externo'      => $transacaoPluggy['id'],
     ];
+  }
+
+  /**
+   * Compras internacionais vêm com `amount` na moeda original (ex.: USD,
+   * indicada em `currencyCode`) e `amountInAccountCurrency` já convertido
+   * para a moeda da conta -- o valor que de fato entra na fatura. Usar
+   * `amount` cru gravava US$ 11,50 como R$ 11,50. Sem a conversão ainda
+   * disponível (compra pendente), cai no `amount` como antes.
+   * Público pra ser reaproveitado pelo BackfillPluggyMoeda.
+   */
+  public static function valorNaMoedaDaConta(array $transacaoPluggy): float
+  {
+    return (float) ($transacaoPluggy['amountInAccountCurrency'] ?? $transacaoPluggy['amount'] ?? 0);
   }
 
   /**
