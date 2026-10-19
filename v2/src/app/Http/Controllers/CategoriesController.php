@@ -38,6 +38,7 @@ class CategoriesController extends Controller
     }
 
     $category->nome = $request->input('nome');
+    $category->icon_class = $request->input('icon_class') ?: null;
 
     if ($category->save()){
       return redirect('/categories')->with('success', 'Categoria salvo com sucesso');

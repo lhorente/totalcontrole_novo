@@ -40,6 +40,12 @@
 
               <div class="row">
                 <div class="col-sm-12">
+                  @include('categories.partials.icon_picker', ['value' => null])
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-sm-12">
                   <button type="submit" class="btn btn-primary">Salvar</button>
                   <a href="{{ url('categories') }}" class="btn btn-default">Cancelar</a>
                 </div>
