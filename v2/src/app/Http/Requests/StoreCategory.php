@@ -25,6 +25,7 @@ class StoreCategory extends FormRequest
     {
       return [
         'nome' => 'required|max:255',
+        'icon_class' => ['nullable', 'max:255', 'regex:/^[a-z0-9 -]+$/'],
       ];
     }
 
@@ -38,6 +39,8 @@ class StoreCategory extends FormRequest
         return [
             'nome.required' => 'O campo nome é obrigatório',
             'nome.max' => 'O campo nome precisa ter no máximo 255 caracteres',
+            'icon_class.max' => 'O ícone precisa ter no máximo 255 caracteres',
+            'icon_class.regex' => 'Ícone inválido',
         ];
     }
 }
