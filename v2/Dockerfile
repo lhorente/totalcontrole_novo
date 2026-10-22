@@ -8,7 +8,9 @@ RUN npm ci
 COPY src/ .
 RUN npm run production
 
-FROM php:8.3-apache
+# Versão fixa: 8.3.36 corrige CVE-2026-109618 e CVE-2026-109619 (RCE sem
+# autenticação). Não voltar para uma versão anterior.
+FROM php:8.3.36-apache
 
 # Instala dependências do sistema
 RUN apt-get update && apt-get install -y \
@@ -59,11 +61,26 @@ RUN echo '<Directory /var/www/html/public>\n\
     Require all granted\n\
 </Directory>' >> /etc/apache2/apache2.conf
 
-# Habilita logs detalhados do PHP e Apache
-RUN echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-errors.conf \
-    && echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-errors.conf \
-    && echo 'display_errors = On' >> /usr/local/etc/php/conf.d/docker-php-errors.conf \
-    && echo 'display_startup_errors = On' >> /usr/local/etc/php/conf.d/docker-php-errors.conf
+# Erros vão só para o log (stderr), nunca para a resposta HTTP -- o Laravel
+# já mostra a página de debug quando APP_DEBUG=true.
+RUN echo 'log_errors = On' >> /usr/local/etc/php/conf.d/docker-php-errors.ini \
+    && echo 'error_log = /dev/stderr' >> /usr/local/etc/php/conf.d/docker-php-errors.ini \
+    && echo 'display_errors = Off' >> /usr/local/etc/php/conf.d/docker-php-errors.ini \
+    && echo 'display_startup_errors = Off' >> /usr/local/etc/php/conf.d/docker-php-errors.ini
+
+# Hardening: não anuncia a versão do PHP e desliga o upload progress da
+# sessão (não usado pelo app; vetor do CVE-2026-109619).
+RUN echo 'expose_php = Off' >> /usr/local/etc/php/conf.d/security.ini \
+    && echo 'session.upload_progress.enabled = 0' >> /usr/local/etc/php/conf.d/security.ini
+
+# Recusa no Apache corpos de requisição acima de 10 MB, antes de chegar ao
+# PHP (post_max_size é 8M). Com mod_php, LimitRequestBody sozinho só trunca a
+# leitura (o PHP ainda executa), então o <If> barra pelo Content-Length antes.
+# Também não expõe versão do Apache/SO.
+RUN echo 'LimitRequestBody 10485760' >> /etc/apache2/apache2.conf \
+    && printf '<If "%%{HTTP:Content-Length} -gt 10485760">\n    Require all denied\n</If>\n' >> /etc/apache2/apache2.conf \
+    && echo 'ServerTokens Prod' >> /etc/apache2/apache2.conf \
+    && echo 'ServerSignature Off' >> /etc/apache2/apache2.conf
 
 # Configura LogLevel do Apache para debug
 RUN echo 'LogLevel info' >> /etc/apache2/apache2.conf
